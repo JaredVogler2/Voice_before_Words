@@ -193,15 +193,15 @@ function AccessPage() {
             <Toggle
               id="long-close"
               title="Close eyes to open the menu"
-              help="Hold your eyes closed for two seconds to open the menu, where you can delete, pause, calibrate again or change settings. Needs the camera."
+              help="Hold your eyes closed for two seconds to open the menu, where you can delete, pause, calibrate again or change how you choose. Needs the camera."
               value={a.longCloseMenu}
               onChange={(longCloseMenu) => set({ longCloseMenu })}
             />
             {camera ? (
               <>
                 <Row
-                  title="In the menu, choose by"
-                  help="A face switch works even when pointing has drifted, so it is the safe choice. Use pointing only if none of the face movements is possible."
+                  title="After closing eyes to open the menu, choose by"
+                  help="Opened from its button, the menu is used by pointing. Opened by closing the eyes, it uses a face switch, which works even when pointing has drifted. Change this to pointing only if none of the face movements is possible."
                   column
                 >
                   <Segmented

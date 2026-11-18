@@ -97,10 +97,22 @@ sits where the pointer already was cannot be chosen until the pointer has been
 somewhere else. The same thing in the same place (a letter typed twice) can be
 chosen again by staying on it for longer.
 
-**The menu does not depend on pointing.** Holding the eyes closed for two
-seconds opens it, and by default it is worked by scanning with a face gesture.
-So when pointing has drifted there is still a way to recalibrate, pause, delete
-or change method. It closes itself after 45 seconds if nothing is chosen.
+**The menu is a screen of at most six large choices**, worked by the same
+method as the board, and it reaches everything a person may need to set up
+again: how they choose, calibration, speed, the voice, an AI model.
+
+**There is also a way in that does not depend on pointing.** Holding the eyes
+closed for two seconds opens the same menu, and then it is worked by scanning
+with a face gesture. So when pointing has drifted there is still a way to
+recalibrate, pause, delete or change method. The menu closes itself after 45
+seconds if nothing is chosen.
+
+**Changing the way of choosing is a trial.** Someone who switches method without
+hands cannot switch back if the new one does not work for them. So the switch
+has to be confirmed using the new method, with two choices on opposite sides of
+the screen (a pointer that is stuck or wildly off cannot do that). With no
+confirmation in 45 seconds, or if calibration for the new method fails, the
+method that worked returns by itself, with no tap needed.
 
 **Head movement is the weak point, and the app says so.** A 15° turn of the
 head roughly doubles the error. The result screen asks the person to keep

@@ -149,6 +149,84 @@ test('a resting pointer chooses, and never chooses what merely appeared under it
   await context.close();
 });
 
+test('settings without hands: the menu, speed and the way of choosing, with a way back', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: false, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  const problems = watch(page);
+  await seed(page, { access: { ...ACCESS, method: 'dwell', dwellMs: 600 }, ai: { apiKey: 'sk-ant-test-key', enabled: false } });
+  await page.route('https://api.anthropic.com/**', (route) => route.abort());
+  await page.goto('/');
+  // Whoever is helping can reach settings from the start screen, before anything is switched on.
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Tap anywhere to start' }).click();
+
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('voice-before-words:settings')!).state.access as { method: string; dwellMs: number });
+  /** Rest the pointer on something until it is chosen, coming to it from somewhere else. */
+  const rest = async (access: string) => {
+    const target = page.locator(`[data-access="${access}"]`);
+    await expect(target).toBeVisible();
+    const box = (await target.boundingBox())!;
+    const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    // A resting pointer never chooses what appears under it, so first look somewhere else.
+    await page.mouse.move(centre.x < 512 ? 1000 : 24, centre.y < 384 ? 740 : 80, { steps: 4 });
+    await page.waitForTimeout(150);
+    await page.mouse.move(centre.x, centre.y, { steps: 6 });
+  };
+
+  // Everything from here on is done by resting a pointer: no clicks, no keys.
+  await rest('nav:menu');
+  await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible({ timeout: 8000 });
+  await rest('menu:settings');
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible({ timeout: 8000 });
+  await rest('menu:slower');
+  await expect.poll(async () => (await saved()).dwellMs, { timeout: 8000 }).toBe(800);
+  await rest('menu:methods');
+  await expect(page.getByRole('dialog', { name: 'How I choose' })).toBeVisible({ timeout: 8000 });
+
+  // The voice and the AI model can be reached the same way: nothing set up at the start is locked in.
+  await rest('menu:back:methods');
+  await rest('menu:more');
+  await expect(page.getByRole('dialog', { name: 'More settings' })).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('[data-access="menu:voice"]')).toBeVisible();
+  await rest('menu:ai');
+  await expect(page.getByRole('dialog', { name: 'Smart sentences' })).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('[data-access="menu:ai-key"]')).toContainText('Change or remove the key');
+  await rest('menu:ai-toggle:off');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('voice-before-words:settings')!).state.ai.enabled), { timeout: 8000 }).toBe(true);
+  await rest('menu:back:ai');
+  await rest('menu:back:more');
+  await rest('menu:methods');
+  await expect(page.getByRole('dialog', { name: 'How I choose' })).toBeVisible({ timeout: 8000 });
+
+  // Try scanning. The app asks whether it works, and the answer has to be given by scanning.
+  await rest('menu:method:scan');
+  await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 8000 });
+  expect((await saved()).method).toBe('scan');
+  const lit = () => page.locator('[data-scan]').evaluateAll((elements) => elements.map((element) => element.getAttribute('data-access')));
+  await expect.poll(lit, { timeout: 20_000, intervals: [40] }).toEqual(['menu:trial:revert']);
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  expect((await saved()).method).toBe('dwell');
+
+  // Try it again and keep it this time.
+  await rest('nav:menu');
+  await rest('menu:settings');
+  await rest('menu:methods');
+  await rest('menu:method:scan');
+  await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 8000 });
+  await expect.poll(lit, { timeout: 20_000, intervals: [40] }).toEqual(['menu:trial:keep']);
+  await page.keyboard.press('Space');
+  // Keeping takes a second choice, in a different place, so it cannot happen by accident.
+  await expect(page.getByRole('heading', { name: 'One more, to be sure' })).toBeVisible();
+  await expect.poll(lit, { timeout: 20_000, intervals: [40] }).toEqual(['menu:trial:confirm']);
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  expect((await saved()).method).toBe('scan');
+  expect(problems).toEqual([]);
+  await context.close();
+});
+
 test('an AI key: tested, used for suggestions, and never in the way when it fails', async ({ page }) => {
   const problems = watch(page);
   await seed(page);
@@ -212,6 +290,15 @@ test('settings: every page opens cleanly and fits a phone', async ({ page }) => 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `sideways scrolling on ${section || 'the index'}`).toBeLessThanOrEqual(1);
   }
+  // The touch menu goes straight to the things chosen during setup, and a key can always be taken out again.
+  await page.goto('/#/');
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'How I choose' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Voice', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'AI key' }).click();
+  await page.getByLabel('API key').fill('sk-ant-a-key-to-remove');
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page.getByLabel('API key')).toHaveValue('');
   // A quick phrase added here is offered on the board.
   await page.goto('/#/settings/words');
   await page.getByLabel('A quick phrase').fill('My name is Sam.');

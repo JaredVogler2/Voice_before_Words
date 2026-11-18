@@ -108,6 +108,18 @@ export function AiSettingsPage() {
               <button type="button" className="btn" onClick={() => setShowKey(!showKey)} aria-pressed={showKey}>
                 {showKey ? 'Hide' : 'Show'}
               </button>
+              {ai.apiKey ? (
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={() => {
+                    set({ apiKey: '', enabled: false });
+                    useTalk.getState().refresh();
+                  }}
+                >
+                  Remove
+                </button>
+              ) : null}
             </span>
             <span className="row-help">
               {provider.keyUrl ? (
@@ -115,7 +127,7 @@ export function AiSettingsPage() {
                   Get one at <a href={provider.keyUrl} target="_blank" rel="noreferrer">{provider.keyUrl.replace(/^https:\/\//, '')}</a>.{' '}
                 </>
               ) : null}
-              The key is kept in this browser and sent only to {provider.needsBaseUrl ? 'the server above' : provider.label}. It never passes through any server of ours, because there isn’t one.
+              You can change or remove the key here at any time. It is kept in this browser and sent only to {provider.needsBaseUrl ? 'the server above' : provider.label}. It never passes through any server of ours, because there isn’t one.
             </span>
           </label>
 

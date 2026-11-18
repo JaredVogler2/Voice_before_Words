@@ -163,16 +163,19 @@ export class AccessController {
   private cleanup: (() => void)[] = [];
   /** While the hands-free menu is open it is always worked by scanning. */
   private menuOpen = false;
+  /** How the menu was opened: by the Menu button, or by holding the eyes closed. */
+  private menuVia: 'pointer' | 'eyes' = 'pointer';
 
   /**
-   * The method in force right now. With a camera method, the menu switches to
-   * scanning with a blink: that needs no pointing accuracy at all, so there is
-   * always a way to pause, recalibrate or change method, even when the pointer
-   * is badly off.
+   * The method in force right now. A menu opened from its button is worked by
+   * the method that opened it. A menu opened by holding the eyes closed, while
+   * pointing with eyes or head, switches to scanning with a face gesture: that
+   * needs no pointing accuracy at all, so there is always a way to pause,
+   * recalibrate or change method, even when the pointer is badly off.
    */
   private get menuScanning(): boolean {
     const chosen = this.settings.method;
-    return this.menuOpen && (chosen === 'gaze' || chosen === 'head') && this.settings.menuBy !== 'point';
+    return this.menuOpen && this.menuVia === 'eyes' && (chosen === 'gaze' || chosen === 'head') && this.settings.menuBy !== 'point';
   }
 
   private get method(): AccessMethod {
@@ -185,11 +188,13 @@ export class AccessController {
   }
 
   /** Tell the controller the hands-free menu opened or closed. */
-  setMenuOpen(open: boolean): void {
-    if (this.menuOpen === open) return;
+  setMenuOpen(open: boolean, via: 'pointer' | 'eyes' = 'pointer'): void {
+    if (this.menuOpen === open && this.menuVia === via) return;
     this.menuOpen = open;
+    this.menuVia = via;
     this.clearFeedback();
-    this.dwell.reset();
+    // Not a full reset: the pointer is still resting where the Menu button was,
+    // and whatever the menu puts there must not be chosen until it has moved.
     this.scanner.restart();
     this.dwell.hold(performance.now(), 600);
   }

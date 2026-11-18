@@ -47,6 +47,13 @@ looks: the group, then the word.*
   | **Scanning** | A blink, raised eyebrows, open mouth or smile seen by the camera; or a Bluetooth switch or key; or a tap anywhere | Choices light up in turn. Needs no pointing at all, so it reaches the full board |
   | **Pointer dwell** | A head mouse, trackball, or an eye tracker that moves the mouse pointer | Rest the pointer on something to choose it. The full board |
 
+- **Nothing set up at the start is a one-way door.** A Menu button is always
+  on the board, and the menu is worked by whichever method is in use: eyes,
+  head, a switch, a pointer or touch. From it a person can change how they
+  choose, calibrate again, change speed, change the voice and turn an AI model
+  on or off. A new way of choosing is a trial: it has to be confirmed using
+  the new method, twice, in two places, or the old one comes back by itself.
+  Typing or pasting an API key is the one thing that needs a keyboard.
 - **Smarter sentences with your own AI key (optional).** A settings page takes
   an API key for Claude, Gemini, OpenAI, or any OpenAI-compatible server
   (including a model running on your own computer). See
@@ -101,9 +108,10 @@ ones, so the app does not pretend otherwise:
   of four, then the word. A page then holds 16 words on either device.
 
   <img src="docs/images/gaze-phone-group.jpg" alt="Eye pointing on a phone: a group of four words (need, eat, drink, play) opened into four large targets, with Back and More below" width="200">
-- The **head must stay roughly where it was** during calibration. The menu
-  (reached by holding the eyes closed for two seconds, and worked by a face
-  gesture so it needs no pointing) always offers "Calibrate again".
+- The **head must stay roughly where it was** during calibration. "Calibrate
+  again" is always in the menu, which can also be opened by holding the eyes
+  closed for two seconds and is then worked by a face gesture, so it still
+  works when pointing has drifted.
 - **A tablet suits eye pointing much better than a phone.** On a phone, head
   pointing or scanning give more for less effort, and the app says so.
 

@@ -39,19 +39,13 @@ type NavId = 'home' | 'words' | 'toggle' | 'prev' | 'next' | 'keys' | 'delete' |
 
 /**
  * Controls for the large-target layout. There is only room for as many as there
- * are columns, so the most needed come first; the rest are in the menu, which
- * is always reachable by holding the eyes closed (or, when that is switched
- * off, from a Menu button that is then always present).
+ * are columns. Menu is always one of them, because the menu is where a person
+ * changes their own settings; whatever does not fit here is inside it.
  */
-function largeNav(cols: number, menuByEyes: boolean): NavId[] {
-  if (!menuByEyes) {
-    if (cols <= 2) return ['next', 'menu'];
-    if (cols === 3) return ['toggle', 'next', 'menu'];
-    if (cols === 4) return ['home', 'words', 'next', 'menu'];
-  }
-  if (cols <= 2) return ['toggle', 'next'];
-  if (cols === 3) return ['home', 'words', 'next'];
-  if (cols === 4) return ['home', 'words', 'next', 'delete'];
+function largeNav(cols: number): NavId[] {
+  if (cols <= 2) return ['next', 'menu'];
+  if (cols === 3) return ['toggle', 'next', 'menu'];
+  if (cols === 4) return ['home', 'words', 'next', 'menu'];
   if (cols === 5) return ['home', 'words', 'next', 'delete', 'menu'];
   if (cols === 6) return ['home', 'words', 'prev', 'next', 'delete', 'menu'];
   return ['home', 'words', 'prev', 'next', 'keys', 'delete', 'menu'];
@@ -483,7 +477,7 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
         {sentences}
         <div className="board-wrap">{tiles}</div>
         <nav className="nav" aria-label="Controls" data-access-group="nav">
-          {(openGroup !== null ? (['unzoom', ...largeNav(cols, settings.access.longCloseMenu).slice(1)] as NavId[]) : largeNav(cols, settings.access.longCloseMenu)).map(navButton)}
+          {(openGroup !== null ? (['unzoom', ...largeNav(cols).slice(1)] as NavId[]) : largeNav(cols)).map(navButton)}
         </nav>
       </div>
     );

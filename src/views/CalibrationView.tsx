@@ -4,6 +4,7 @@ import { access, modelKey, viewportSize } from '../access/controller';
 import { gradeCalibration, recommendedTargetSize, type CalibrationGrade, type PointerSource } from '../access/gazeModel';
 import { speaker } from '../speech/speaker';
 import { useSettings } from '../state/settings';
+import { useTrial } from '../state/trial';
 import { Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { go, useAccessStatus } from '../ui/hooks';
@@ -139,6 +140,18 @@ export function CalibrationView() {
 
   useEffect(() => () => access.cancelCalibration(), []);
 
+  // A method being tried from the hands-free menu: if calibration cannot be
+  // done, the person has no way to say so. Go back to what worked.
+  const trial = useTrial((state) => state.trial);
+  useEffect(() => {
+    if (!trial || stage !== 'done' || !failed) return;
+    const timer = window.setTimeout(() => {
+      useTrial.getState().revert();
+      go('/');
+    }, 12000);
+    return () => window.clearTimeout(timer);
+  }, [trial, stage, failed]);
+
   const leave = () => {
     access.cancelCalibration();
     go('/');
@@ -182,6 +195,7 @@ export function CalibrationView() {
           <>
             <h1>That didn’t work</h1>
             <p>Too few dots could be read. Make sure your whole face is in view and lit from the front, then try again.</p>
+            {trial ? <p>In a few seconds this goes back to the way of choosing you were using before.</p> : null}
           </>
         ) : (
           <>
