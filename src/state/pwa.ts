@@ -30,6 +30,9 @@ export async function registerOfflineSupport(): Promise<void> {
       onNeedRefresh: () => usePwa.setState({ updateReady: true }),
       onOfflineReady: () => usePwa.setState({ offlineReady: true }),
     });
+    // That callback only fires the first time. On every later visit the app is
+    // already saved, which an active service worker for this page tells us.
+    void navigator.serviceWorker.ready.then(() => usePwa.setState({ offlineReady: true }));
   } catch {
     // No offline support here (for example a private window). The app still works online.
   }

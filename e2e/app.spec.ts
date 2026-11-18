@@ -220,6 +220,53 @@ test('settings: every page opens cleanly and fits a phone', async ({ page }) => 
   expect(problems).toEqual([]);
 });
 
+test('after one visit it works with no connection, face tracking included', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'only Chromium can be given a made-up camera');
+  const context = await browser.newContext({ viewport: { width: 820, height: 1180 }, serviceWorkers: 'allow' });
+  const page = await context.newPage();
+  const problems = watch(page);
+  await seed(page, { access: { ...ACCESS, method: 'gaze', switchGesture: 'blink', longCloseMenu: true } });
+  await page.goto('/');
+
+  // The first visit, with a connection: the app saves itself, and using the camera saves the face-tracking engine.
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.getByRole('button', { name: 'Tap anywhere to start' }).click();
+  await expect(page.getByText(/whole face is inside the oval/)).toBeVisible({ timeout: 30_000 });
+  const saved = (name: string) =>
+    page.evaluate(async (part) => {
+      let count = 0;
+      for (const key of await caches.keys()) if (key.includes(part)) count += (await (await caches.open(key)).keys()).length;
+      return count;
+    }, name);
+  await expect.poll(() => saved('face-tracking'), { timeout: 60_000 }).toBeGreaterThanOrEqual(3);
+  await expect.poll(() => saved('precache'), { timeout: 60_000 }).toBeGreaterThan(600);
+
+  await context.setOffline(true);
+  await page.reload();
+  // Eye pointing still starts: camera on, face tracker loaded from what was saved.
+  await expect(page.getByText(/whole face is inside the oval/)).toBeVisible({ timeout: 30_000 });
+
+  // And so does the board, with its pictures, its sentences and its settings.
+  await page.evaluate(() => {
+    const key = 'voice-before-words:settings';
+    const value = JSON.parse(localStorage.getItem(key)!);
+    value.state.access.method = 'touch';
+    localStorage.setItem(key, JSON.stringify(value));
+    location.hash = '#/';
+  });
+  await page.reload();
+  await tile(page, 'I').click();
+  await tile(page, 'want').click();
+  await expect(sentences(page)).toContainText(['I want it.']);
+  const pictures = await page.locator('.board .tile img').evaluateAll((images) => Promise.all(images.slice(0, 10).map((image) => (image as HTMLImageElement).decode().then(() => (image as HTMLImageElement).naturalWidth > 0, () => false))));
+  expect(pictures.length).toBeGreaterThan(5);
+  expect(pictures.every(Boolean)).toBe(true);
+  await page.goto('/#/settings/about');
+  await expect(page.getByText('Saved on this device. The board works without the internet.')).toBeVisible();
+  expect(problems).toEqual([]);
+  await context.close();
+});
+
 test('eye pointing: the camera and face tracker start on the device and ask for a face', async ({ browser, browserName }) => {
   test.skip(browserName !== 'chromium', 'only Chromium can be given a made-up camera');
   // A synthetic camera picture with no face in it. That is enough to prove the camera is opened, the

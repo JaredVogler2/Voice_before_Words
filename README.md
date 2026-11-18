@@ -175,14 +175,18 @@ downloaded free in the device's own settings and then appear in the app.
 Verified, by tests that run in a real browser against the production build:
 
 - First run, composing messages, suggestions, speaking, every board and every
-  settings page (Chromium; the same tests run on Firefox and WebKit in CI).
+  settings page, in Chromium, Firefox and WebKit (the engine behind every
+  browser on iPhone and iPad).
 - Scanning with a switch, and choosing by resting a pointer, including that
   something which merely appears under a resting pointer is never chosen.
 - The AI key flow against a stand-in for the provider: the request that is
   sent, suggestions arriving, repeats served from memory, and every failure
   falling back to on-device suggestions.
 - The camera opening and the face tracker loading from the app's own files,
-  with no request leaving the device.
+  with no request leaving the device, and the camera being restarted by the
+  app when something takes it away.
+- Working with no connection after one visit: the board, its pictures, its
+  sentences, and eye pointing once it has been used (Chromium).
 - Eye pointing end to end, by feeding photographs of real people looking in
   known directions into the app as its camera: hands-free calibration, the
   pointer landing about 2° from where the person was looking, and two-step

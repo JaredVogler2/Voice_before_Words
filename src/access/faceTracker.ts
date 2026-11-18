@@ -52,6 +52,31 @@ function classify(error: unknown): TrackerErrorKind {
   return 'unknown';
 }
 
+/** The cache the service worker serves the face-tracking files from (see vite.config.ts). */
+const OFFLINE_CACHE = 'face-tracking-v1';
+
+/**
+ * Keep the face-tracking files on the device once they have been used.
+ *
+ * They are too large to download for everyone up front, and on a first visit
+ * the page is not yet under the service worker's control, so nothing would
+ * save them. Saving them here means that someone who set up eye pointing with
+ * a connection still has it the next time, without one.
+ */
+async function keepForOffline(urls: string[]): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  try {
+    const cache = await caches.open(OFFLINE_CACHE);
+    for (const url of urls) {
+      if (await cache.match(url)) continue;
+      const response = await fetch(url);
+      if (response.ok) await cache.put(url, response);
+    }
+  } catch {
+    // No storage here, or no room left. Face tracking still works with a connection.
+  }
+}
+
 /** No picture for this long, with the page in view, means the camera has stopped. */
 const STALL_MS = 4000;
 /** How many times in a row to restart a stalled camera before reporting a problem. */
@@ -224,6 +249,7 @@ export class FaceTracker {
           outputFaceBlendshapes: true,
           outputFacialTransformationMatrixes: true,
         });
+        void keepForOffline([`${base}/vision_wasm_internal.js`, `${base}/vision_wasm_internal.wasm`, `${base}/face_landmarker.task`]);
       }
     } catch {
       this.fail('model');

@@ -85,6 +85,10 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'face-tracking-v1',
+              // The engine asks for its loader as a cross-origin-style script, and many servers
+              // answer static files with "Vary: Origin". Without this the saved copy is not
+              // recognised as the same file, and face tracking fails with no connection.
+              matchOptions: { ignoreVary: true },
               expiration: { maxEntries: 8 },
               cacheableResponse: { statuses: [200] },
             },
