@@ -12,6 +12,7 @@ import { NavRow, PageHeader, Row, Segmented, Stepper, Toggle } from '../ui/contr
 import { Icon } from '../ui/Icon';
 import { Tile } from '../ui/Tile';
 import { go, useAccessStatus } from '../ui/hooks';
+import { requestKeptStorage, storageIsKept } from '../ui/overlays';
 import { categoryBoards } from '../vocab/boards';
 import { AiSettingsPage } from './SettingsAi';
 import { METHODS } from './methods';
@@ -594,6 +595,11 @@ function DataPage() {
   const [message, setMessage] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  /** Whether the browser has promised not to clear this site's data by itself. */
+  const [kept, setKept] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    void storageIsKept().then(setKept);
+  }, []);
 
   const download = () => {
     const blob = new Blob([JSON.stringify({ app: 'voice-before-words', version: 1, settings: exportSettings(), favourites: talk.saved }, null, 1)], { type: 'application/json' });
@@ -656,6 +662,32 @@ function DataPage() {
               <Icon name="upload" />
               Restore
             </button>
+          </Row>
+          <Row
+            title="Keep what is saved here"
+            help={
+              kept
+                ? 'The browser has agreed not to clear this app’s words, favourites and settings by itself.'
+                : 'Browsers sometimes clear a site’s saved data when space is short or the site has not been opened for a while. Ask this one not to. Adding the app to the home screen helps too.'
+            }
+          >
+            {kept ? (
+              <span className="muted">On</span>
+            ) : (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  void requestKeptStorage().then((ok) => {
+                    setKept(ok);
+                    setMessage(ok ? 'The browser will keep this app’s data.' : 'The browser did not agree. Add the app to the home screen, and save a backup now and then.');
+                  });
+                }}
+              >
+                <Icon name="shield" />
+                Ask
+              </button>
+            )}
           </Row>
           {message ? <p className="note" role="status" style={{ marginBottom: 12 }}>{message}</p> : null}
         </div>

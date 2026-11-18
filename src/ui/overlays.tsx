@@ -48,14 +48,33 @@ let askedToKeep = false;
  * Ask the browser not to clear what is saved here (words, favourites, history,
  * calibration) when it is short of space or the site has not been opened for a
  * while. Browsers may say no; adding the app to the home screen makes yes likely.
+ *
+ * Firefox answers this by showing the person a permission pop-up, which must
+ * not appear out of nowhere on someone's first touch (and cannot be answered
+ * without hands). There it is only asked from the button in Settings.
  */
 function keepStorage(): void {
   if (askedToKeep) return;
   askedToKeep = true;
+  if (/\bGecko\/\d/.test(navigator.userAgent)) return;
+  void requestKeptStorage();
+}
+
+/** Ask now. Resolves to whether the browser has agreed to keep this site's data. */
+export async function requestKeptStorage(): Promise<boolean> {
   try {
-    void navigator.storage?.persist?.().catch(() => undefined);
+    return (await navigator.storage?.persist?.()) ?? false;
   } catch {
-    // Not offered here.
+    return false;
+  }
+}
+
+/** Whether the browser has already agreed. Undefined where it cannot be told. */
+export async function storageIsKept(): Promise<boolean | undefined> {
+  try {
+    return await navigator.storage?.persisted?.();
+  } catch {
+    return undefined;
   }
 }
 
