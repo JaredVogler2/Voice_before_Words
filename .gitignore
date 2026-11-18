@@ -1,0 +1,14 @@
+node_modules
+dist
+dev-dist
+*.local
+.DS_Store
+coverage
+test-results
+playwright-report
+# Copied from node_modules by scripts/sync-mediapipe.mjs (14 MB, Apache-2.0)
+public/mediapipe/vision_wasm_internal.js
+public/mediapipe/vision_wasm_internal.wasm
+# Derived from a data set that may not be redistributed (see research/gaze/README.md)
+research/gaze/*.json
+research/gaze/__pycache__

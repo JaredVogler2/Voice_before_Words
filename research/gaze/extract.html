@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      // Runs the same face-landmark model the app uses over still photographs, each one
+      // redrawn the way a front camera would see the person: 640x480 with the face 200 px wide.
+      import { FaceLandmarker, FilesetResolver } from '/vision/vision_bundle.mjs';
+      const fileset = await FilesetResolver.forVisionTasks('/vision/wasm');
+      const landmarker = await FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: '/model/face_landmarker.task', delegate: 'CPU' },
+        runningMode: 'IMAGE',
+        numFaces: 1,
+        outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true,
+      });
+      const round = (x) => Math.round(x * 1e5) / 1e5;
+      function pack(result) {
+        if (!result.faceLandmarks.length) return null;
+        return {
+          lm: result.faceLandmarks[0].map((p) => [round(p.x), round(p.y), round(p.z)]),
+          bs: Object.fromEntries(result.faceBlendshapes[0].categories.map((c) => [c.categoryName, round(c.score)])),
+          mat: Array.from(result.facialTransformationMatrixes[0].data).map(round),
+        };
+      }
+      window.extract = async (url, variants) => {
+        const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+        const canvas = document.getElementById('c');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        // First pass: find the face at a comfortable scale.
+        const first = 1280 / bitmap.width;
+        canvas.width = 1280;
+        canvas.height = Math.round(bitmap.height * first);
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const found = landmarker.detect(canvas);
+        if (!found.faceLandmarks.length) return { error: 'no face' };
+        const lm = found.faceLandmarks[0];
+        const left = lm[234].x * bitmap.width;
+        const right = lm[454].x * bitmap.width;
+        const faceWidth = Math.abs(right - left);
+        const cx = (left + right) / 2;
+        const cy = ((lm[10].y + lm[152].y) / 2) * bitmap.height;
+        const out = {};
+        for (const v of variants) {
+          const scale = v.faceW / faceWidth;
+          canvas.width = v.W;
+          canvas.height = v.H;
+          context.fillStyle = '#000';
+          context.fillRect(0, 0, v.W, v.H);
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(bitmap, v.W / 2 - cx * scale, v.H * 0.45 - cy * scale, bitmap.width * scale, bitmap.height * scale);
+          if (v.noise) {
+            // Sensor-like noise, the same pattern every time, to measure how much it alone moves the estimate.
+            const image = context.getImageData(0, 0, v.W, v.H);
+            let seed = 12345;
+            for (let i = 0; i < image.data.length; i += 4) {
+              seed = (seed * 1664525 + 1013904223) >>> 0;
+              const n = ((seed >>> 8) / 16777216 - 0.5) * 2 * v.noise;
+              image.data[i] += n;
+              image.data[i + 1] += n;
+              image.data[i + 2] += n;
+            }
+            context.putImageData(image, 0, 0);
+          }
+          out[v.name] = pack(landmarker.detect(canvas));
+        }
+        bitmap.close();
+        return out;
+      };
+      window.ready = true;
+    </script>
+  </body>
+</html>

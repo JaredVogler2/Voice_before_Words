@@ -1,0 +1,48 @@
+{
+  "name": "voice-before-words",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A free, open-source AAC communication board for the web: symbols in, natural sentences out, spoken aloud. Touch, eye gaze, head pointing and switch scanning.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "symbols": "node scripts/build-symbols.mjs",
+    "mediapipe": "node scripts/sync-mediapipe.mjs",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "predev": "node scripts/sync-mediapipe.mjs",
+    "prebuild": "node scripts/sync-mediapipe.mjs",
+    "postinstall": "node scripts/sync-mediapipe.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@mediapipe/tasks-vision": "^1.2.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.1",
+    "svgo": "^4.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1",
+    "workbox-window": "^7.4.1"
+  }
+}
