@@ -47,6 +47,13 @@ looks: the group, then the word.*
   | **Scanning** | A blink, raised eyebrows, open mouth or smile seen by the camera; or a Bluetooth switch or key; or a tap anywhere | Choices light up in turn. Needs no pointing at all, so it reaches the full board |
   | **Pointer dwell** | A head mouse, trackball, or an eye tracker that moves the mouse pointer | Rest the pointer on something to choose it. The full board |
 
+- **Favourite and most-used phrases, remembered.** "My phrases" lists the
+  sentences a person has starred as favourites, then the ones they say most,
+  then the most recent. Favourites are also offered at the top of the board
+  whenever the message is empty, so one choice says the whole thing. A
+  sentence that was just said can be saved from the menu with any method.
+  It is all kept in the browser on the device, and favourites go into the
+  backup file.
 - **Nothing set up at the start is a one-way door.** A Menu button is always
   on the board, and the menu is worked by whichever method is in use: eyes,
   head, a switch, a pointer or touch. From it a person can change how they

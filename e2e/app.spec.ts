@@ -104,8 +104,22 @@ test('every board keeps its place: paging, spelling, and what was said before', 
   await page.getByRole('button', { name: 'Put the message back' }).click();
   await expect(message(page)).toHaveText(['dog']);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByRole('button', { name: 'Said before' }).click();
+  await page.getByRole('button', { name: 'My phrases' }).click();
   await expect(page.getByText('Nothing has been said yet.')).toBeVisible();
+
+  // Say something, keep it as a favourite, and find it still there after the app is closed and opened again.
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear the message' }).click();
+  await tile(page, 'I').click();
+  await tile(page, 'want').click();
+  await page.getByRole('button', { name: 'Say: I want it.' }).click();
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await page.getByRole('button', { name: 'Save as a favourite' }).click();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Say: I want it.' })).toBeVisible(); // offered straight away, with nothing chosen
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await page.getByRole('button', { name: 'My phrases' }).click();
+  await expect(tile(page, 'Say: I want it. (favourite)')).toHaveText('★ I want it.');
 });
 
 test('one switch: choices light up in turn and a key picks the lit one', async ({ browser }) => {
@@ -172,6 +186,10 @@ test('settings without hands: the menu, speed and the way of choosing, with a wa
     await page.mouse.move(centre.x < 512 ? 1000 : 24, centre.y < 384 ? 740 : 80, { steps: 4 });
     await page.waitForTimeout(150);
     await page.mouse.move(centre.x, centre.y, { steps: 6 });
+    // The target is on screen, under the pointer, and the app has noticed the pointer on it.
+    const under = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('[data-access]')?.getAttribute('data-access') ?? `nothing at ${x},${y} in ${innerWidth}x${innerHeight}`, [centre.x, centre.y]);
+    expect(under, `what is under the pointer when resting on ${access}`).toBe(access);
+    await expect(target, `the app should show the pointer resting on ${access}`).toHaveAttribute('data-hover', 'true', { timeout: 4000 });
   };
 
   // Everything from here on is done by resting a pointer: no clicks, no keys.
@@ -302,7 +320,7 @@ test('settings: every page opens cleanly and fits a phone', async ({ page }) => 
   // A quick phrase added here is offered on the board.
   await page.goto('/#/settings/words');
   await page.getByLabel('A quick phrase').fill('My name is Sam.');
-  await page.locator('.card', { hasText: 'Quick phrases' }).getByRole('button', { name: 'Add', exact: true }).click();
+  await page.locator('.card', { hasText: 'Favourite phrases' }).getByRole('button', { name: 'Add', exact: true }).click();
   await page.goto('/#/');
   await expect(page.getByRole('button', { name: 'Say: My name is Sam.' })).toBeVisible();
   expect(problems).toEqual([]);

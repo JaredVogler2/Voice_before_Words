@@ -40,6 +40,23 @@ export function StartGate({ onStart }: { onStart: () => void }) {
 export function unlockEverything(): void {
   speaker.unlock();
   unlockSounds();
+  keepStorage();
+}
+
+let askedToKeep = false;
+/**
+ * Ask the browser not to clear what is saved here (words, favourites, history,
+ * calibration) when it is short of space or the site has not been opened for a
+ * while. Browsers may say no; adding the app to the home screen makes yes likely.
+ */
+function keepStorage(): void {
+  if (askedToKeep) return;
+  askedToKeep = true;
+  try {
+    void navigator.storage?.persist?.().catch(() => undefined);
+  } catch {
+    // Not offered here.
+  }
 }
 
 interface MenuProps {
@@ -80,8 +97,14 @@ export function Menu({ status, onClose }: MenuProps) {
           ) : null}
           <button type="button" className="menu-item" data-access="menu:recent" onClick={close(() => talk.open('recent'))}>
             <Icon name="history" />
-            Said before
+            My phrases
           </button>
+          {talk.lastSaid ? (
+            <button type="button" className="menu-item" data-access="menu:favourite" onClick={close(() => talk.toggleSaved(talk.lastSaid))}>
+              <Icon name="star" />
+              {talk.saved.includes(talk.lastSaid) ? 'Remove from favourites' : 'Save as a favourite'}
+            </button>
+          ) : null}
           {talk.lastSaid ? (
             <button type="button" className="menu-item" data-access="menu:repeat" onClick={close(() => talk.sayPhrase(talk.lastSaid))}>
               <Icon name="speaker" />

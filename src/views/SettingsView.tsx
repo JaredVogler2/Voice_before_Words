@@ -529,8 +529,8 @@ function WordsPage() {
 
         <div className="card pad stack">
           <div>
-            <div className="row-title">Quick phrases</div>
-            <div className="row-help">Whole sentences offered at the top of the board whenever the message is empty: a name, an address, “I need the toilet”. One choice says the lot.</div>
+            <div className="row-title">Favourite phrases</div>
+            <div className="row-help">Whole sentences kept for good: a name, an address, “I need the toilet”. They are offered at the top of the board whenever the message is empty and come first on “My phrases”. A sentence that was just said can also be saved from the menu.</div>
           </div>
           {talk.saved.map((text) => (
             <div key={text} className="inline" style={{ justifyContent: 'space-between' }}>
@@ -596,7 +596,7 @@ function DataPage() {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const download = () => {
-    const blob = new Blob([JSON.stringify({ app: 'voice-before-words', version: 1, settings: exportSettings() }, null, 1)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ app: 'voice-before-words', version: 1, settings: exportSettings(), favourites: talk.saved }, null, 1)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'voice-before-words-backup.json';
@@ -625,7 +625,7 @@ function DataPage() {
 
         <div className="card">
           <h2>Backup</h2>
-          <Row title="Save a backup" help="Settings, your own words and calibration, as a file. Your API key is never included.">
+          <Row title="Save a backup" help="Settings, your own words, favourite phrases and calibration, as a file. Your API key is never included.">
             <button type="button" className="btn" onClick={download}>
               <Icon name="download" />
               Save
@@ -644,8 +644,10 @@ function DataPage() {
                 file
                   .text()
                   .then((text) => {
-                    const data = JSON.parse(text) as { settings?: unknown };
-                    setMessage(importSettings(data.settings) ? 'Backup restored.' : 'That file is not a backup from this app.');
+                    const data = JSON.parse(text) as { settings?: unknown; favourites?: unknown };
+                    const ok = importSettings(data.settings);
+                    if (ok && data.favourites !== undefined) talk.setSaved(data.favourites);
+                    setMessage(ok ? 'Backup restored.' : 'That file is not a backup from this app.');
                   })
                   .catch(() => setMessage('That file could not be read.'));
               }}
@@ -660,7 +662,7 @@ function DataPage() {
 
         <div className="card">
           <h2>Clear</h2>
-          <Row title="What I have said" help={`${talk.history.length} sentences, the word habits learned from them, and remembered AI answers.`}>
+          <Row title="What I have said" help={`${talk.history.length} sentences, the word habits learned from them, and remembered AI answers. Favourites are kept.`}>
             <button type="button" className="btn danger" onClick={() => { talk.forgetHistory(); setMessage('History cleared.'); }}>
               Clear
             </button>
@@ -672,7 +674,7 @@ function DataPage() {
           </Row>
           <Row title="Everything" help="Back to how the app was the first time, including removing the API key.">
             {confirmReset ? (
-              <button type="button" className="btn danger" onClick={() => { talk.forgetHistory(); settings.reset(); settings.set({ ...DEFAULT_SETTINGS }); go('/welcome'); }}>
+              <button type="button" className="btn danger" onClick={() => { talk.forgetHistory(); talk.setSaved([]); settings.reset(); settings.set({ ...DEFAULT_SETTINGS }); go('/welcome'); }}>
                 Yes, reset
               </button>
             ) : (

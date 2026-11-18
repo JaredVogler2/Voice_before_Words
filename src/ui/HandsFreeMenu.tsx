@@ -134,7 +134,7 @@ export function HandsFreeMenu({ status, via, onClose }: { status: AccessStatus; 
       { id: 'delete', icon: 'backspace', label: 'Delete last word', disabled: empty, onSelect: () => talk.backspace() },
       { id: 'clear', icon: 'clear', label: 'Clear message', disabled: empty, onSelect: done(() => talk.clear()) },
       { id: 'repeat', icon: 'speaker', label: 'Say it again', disabled: !talk.lastSaid, onSelect: done(() => talk.sayPhrase(talk.lastSaid)) },
-      { id: 'boards', icon: 'grid', label: 'Boards', detail: 'Home, all words, spell', onSelect: () => setScreen('boards') },
+      { id: 'boards', icon: 'grid', label: 'Boards', detail: 'Home, words, spell, my phrases', onSelect: () => setScreen('boards') },
       { id: 'settings', icon: 'settings', label: 'Settings', detail: 'How I choose, calibrate, voice, AI', onSelect: () => setScreen('settings') },
     ];
   } else if (screen === 'boards') {
@@ -143,7 +143,15 @@ export function HandsFreeMenu({ status, via, onClose }: { status: AccessStatus; 
       { id: 'home', icon: 'home', label: 'Home', onSelect: done(() => talk.open(HOME_BOARD)) },
       { id: 'words', icon: 'grid', label: 'All words', onSelect: done(() => talk.open(CATEGORIES_BOARD)) },
       { id: 'keys', icon: 'keyboard', label: 'Spell', onSelect: done(() => talk.open('keyboard')) },
-      { id: 'recent', icon: 'history', label: 'Said before', onSelect: done(() => talk.open('recent')) },
+      { id: 'recent', icon: 'history', label: 'My phrases', detail: 'Favourites and most said', onSelect: done(() => talk.open('recent')) },
+      {
+        id: `favourite:${talk.saved.includes(talk.lastSaid) ? 'remove' : 'save'}`,
+        icon: 'star',
+        label: talk.saved.includes(talk.lastSaid) ? 'Remove from favourites' : 'Save as a favourite',
+        detail: talk.lastSaid ? `“${talk.lastSaid.length > 42 ? `${talk.lastSaid.slice(0, 40)}…` : talk.lastSaid}”` : 'Say something first',
+        disabled: !talk.lastSaid,
+        onSelect: () => talk.toggleSaved(talk.lastSaid),
+      },
     ];
   } else if (screen === 'settings') {
     // One speed control: how long to rest on something, or how long each choice stays lit.

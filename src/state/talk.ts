@@ -9,6 +9,7 @@ import { speaker } from '../speech/speaker';
 import { HOME_BOARD } from '../vocab/boards';
 import { getWord } from '../vocab/lexicon';
 import type { Word } from '../vocab/types';
+import { cleanFavourites, MAX_FAVOURITES } from './phrases';
 import { useSettings } from './settings';
 
 /**
@@ -60,7 +61,10 @@ interface TalkStore {
   open(board: string): void;
   setPage(page: number): void;
   setPartnerSaid(text: string): void;
+  /** Add a sentence to the favourites, or take it out. */
   toggleSaved(text: string): void;
+  /** Replace the favourites, for restoring a backup. */
+  setSaved(list: unknown): void;
   refresh(): void;
   forgetHistory(): void;
 }
@@ -213,12 +217,17 @@ export const useTalk = create<TalkStore>()(
       },
 
       toggleSaved(text) {
-        set((state) => ({ saved: state.saved.includes(text) ? state.saved.filter((item) => item !== text) : [...state.saved, text].slice(-40) }));
+        set((state) => ({ saved: state.saved.includes(text) ? state.saved.filter((item) => item !== text) : [...state.saved, text].slice(-MAX_FAVOURITES) }));
+      },
+
+      setSaved(list) {
+        set({ saved: cleanFavourites(list) });
       },
 
       forgetHistory() {
         memory.clear();
-        set({ history: [], usage: emptyUsage(), memory: [], saved: [], lastSaid: '' });
+        // Favourites were chosen on purpose, so clearing the history leaves them alone.
+        set({ history: [], usage: emptyUsage(), memory: [], lastSaid: '' });
       },
 
       refresh() {

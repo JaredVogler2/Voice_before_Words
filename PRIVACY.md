@@ -15,10 +15,16 @@ Everything below is kept **in the browser on the device**, and nowhere else.
 |---|---|
 | Settings | So the app is set up the same way next time |
 | Words, photos and quick phrases you add | They are part of the board |
-| The last 200 sentences spoken | For "Said before", and to learn which words usually follow which |
+| The last 200 sentences spoken, and the ones starred as favourites | For "My phrases", and to learn which words usually follow which |
 | Calibration for eye or head pointing | A short list of numbers, never a picture |
 | Answers from an AI model, if one is used | So the same message is not sent (and paid for) twice |
 | An API key, if one is entered | So it need not be typed again. This can be switched off, and then the key is forgotten when the tab closes |
+
+The app asks the browser to treat this as data to keep. Browsers can still clear
+it: Safari removes a site's data after about a week without a visit unless the
+app has been added to the home screen, and clearing browsing data removes it
+too. Adding the app to the home screen, and saving a backup file now and then,
+are the ways to be sure.
 
 It can all be removed in **Settings → Privacy and your data**, piece by piece or
 all at once. Clearing the browser's data for the site removes it too. A backup

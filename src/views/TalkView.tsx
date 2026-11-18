@@ -5,6 +5,7 @@ import { predictNext } from '../language/predict';
 import type { Suggestion, SuggestionKind } from '../language/types';
 import { PROVIDERS } from '../llm';
 import { useSettings, type Settings } from '../state/settings';
+import { phraseBoard } from '../state/phrases';
 import { currentLiteral, quickPhrases, useTalk } from '../state/talk';
 import { buildVocabulary, colorOf, type Vocabulary } from '../state/words';
 import { Icon } from '../ui/Icon';
@@ -114,7 +115,7 @@ type Cell =
   | { type: 'word'; id: string }
   | { type: 'folder'; board: string }
   | { type: 'letter'; letter: string }
-  | { type: 'phrase'; text: string }
+  | { type: 'phrase'; text: string; saved: boolean }
   | { type: 'action'; id: 'add-word' | 'space-word'; label: string };
 
 export function TalkView({ onMenu }: { onMenu: () => void }) {
@@ -150,20 +151,11 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
       return [...LETTERS.map((letter): Cell => ({ type: 'letter', letter })), { type: 'action', id: 'add-word', label: 'add word' }];
     }
     if (board === 'recent') {
-      const seen = new Set<string>();
-      const out: Cell[] = [];
-      for (let i = talk.history.length - 1; i >= 0 && out.length < 40; i--) {
-        const text = talk.history[i].text;
-        if (!seen.has(text)) {
-          seen.add(text);
-          out.push({ type: 'phrase', text });
-        }
-      }
-      return out;
+      return phraseBoard(talk.history, talk.saved).map((item): Cell => ({ type: 'phrase', text: item.text, saved: item.saved }));
     }
     const data = vocabulary.board(board) ?? vocabulary.board(HOME_BOARD)!;
     return data.items.map((item): Cell => (item.kind === 'word' ? { type: 'word', id: item.id } : { type: 'folder', board: item.board }));
-  }, [board, vocabulary, talk.history]);
+  }, [board, vocabulary, talk.history, talk.saved]);
 
   // Letters can be smaller than pictures when a finger is choosing, so the whole
   // alphabet stays on one page; pointing by eye or head keeps its larger targets.
@@ -270,7 +262,7 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
 
   const provider = PROVIDERS[settings.ai.provider];
   const usedAi = suggestions.some((item) => item.source === 'ai' || item.source === 'memory');
-  const boardLabel = board === 'keyboard' ? 'Spell a word' : board === 'recent' ? 'Said before' : (vocabulary.board(board)?.label ?? '');
+  const boardLabel = board === 'keyboard' ? 'Spell a word' : board === 'recent' ? 'My phrases' : (vocabulary.board(board)?.label ?? '');
 
   const empty = tokens.length === 0 && !typed;
 
@@ -326,7 +318,8 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
       return <Tile key={`letter:${cell.letter}`} accessId={`letter:${cell.letter}`} group={group} reachable={reachable} label={cell.letter} image={null} color="little" onSelect={() => talk.type(cell.letter)} />;
     }
     if (cell.type === 'phrase') {
-      return <Tile key={`phrase:${cell.text}`} accessId={`phrase:${cell.text}`} group={group} reachable={reachable} label={cell.text} image={null} color="social" hint={`Say: ${cell.text}`} onSelect={() => talk.sayPhrase(cell.text)} />;
+      // A star marks a favourite: kept on purpose, and never pushed off the board by newer sentences.
+      return <Tile key={`phrase:${cell.text}`} accessId={`phrase:${cell.text}`} group={group} reachable={reachable} label={cell.saved ? `★ ${cell.text}` : cell.text} image={null} color={cell.saved ? 'social' : 'little'} hint={`Say: ${cell.text}${cell.saved ? ' (favourite)' : ''}`} onSelect={() => talk.sayPhrase(cell.text)} />;
     }
     return <Tile key={cell.id} accessId={`action:${cell.id}`} group={group} reachable={reachable} label={cell.label} image={null} color="verb" onSelect={() => talk.commitTyped()} />;
   };
@@ -341,7 +334,7 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
       return (
         <div className="board-empty">
           <Icon name="history" />
-          <span>Nothing has been said yet. Sentences you say are kept here, on this device, so you can say them again.</span>
+          <span>Nothing has been said yet. Your favourites and the sentences you say most are kept here, on this device, so one choice says them again.</span>
         </div>
       );
     }
