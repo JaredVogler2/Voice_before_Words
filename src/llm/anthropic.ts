@@ -24,6 +24,14 @@ function supportsFallback(model: string): boolean {
   return /^claude-(opus-5|sonnet-5-5|fable-5)/.test(model);
 }
 
+/**
+ * The instructions are the same on every request, so they are marked for
+ * caching: while someone is talking, each request after the first reads them
+ * at a small fraction of the normal price. (A prompt too short for a given
+ * model to cache is simply sent as usual.)
+ */
+const SYSTEM = [{ type: 'text' as const, text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' as const } }];
+
 type AnthropicModule = typeof import('@anthropic-ai/sdk');
 let sdk: Promise<AnthropicModule> | undefined;
 
@@ -97,7 +105,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
         {
           model,
           max_tokens: 2048,
-          system: SYSTEM_PROMPT,
+          system: SYSTEM,
           messages,
           betas: [FALLBACK_BETA],
           fallbacks: 'default',
@@ -112,7 +120,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
         {
           model,
           max_tokens: 2048,
-          system: SYSTEM_PROMPT,
+          system: SYSTEM,
           messages,
           ...(outputConfig ? { output_config: outputConfig } : {}),
         },
@@ -156,9 +164,9 @@ export const anthropicProvider: Provider = {
   keyHint: 'Starts with sk-ant-',
   defaultModel: 'claude-opus-5-5',
   models: [
-    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', note: 'Best understanding of what you mean' },
-    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', note: 'Balanced speed and quality' },
-    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', note: 'Fastest and by far the cheapest' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', note: 'Best understanding of what you mean. Slowest, and the most expensive: about a cent a suggestion.' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', note: 'In between: about half the cost of Opus.' },
+    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', note: 'Fastest, and about forty times cheaper than Opus. Plenty for most messages.' },
   ],
   needsBaseUrl: false,
   suggest,

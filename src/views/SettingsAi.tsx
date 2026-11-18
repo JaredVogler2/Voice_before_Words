@@ -202,8 +202,9 @@ export function AiSettingsPage() {
         </div>
 
         <div className="note warn">
-          <strong>Cost.</strong> The AI company charges your account for each suggestion. A sentence is a tiny request, so this is usually a few dollars a month at most, and much less with a
-          small fast model; check your provider’s prices. Repeated phrases are remembered on this device and not asked for twice.
+          <strong>Cost.</strong> The AI company charges your account for each suggestion, and the model you choose makes a very large difference. As a rough guide, someone who
+          says a hundred sentences a day would spend a dollar or two a month with a small fast model such as Claude Haiku 5.5, and fifty dollars or more with the largest ones.
+          Check your provider’s prices, and set a spending limit on your account there. Repeated phrases are remembered on this device and not asked for twice.
         </div>
       </div>
     </>

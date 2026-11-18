@@ -138,10 +138,14 @@ What to know:
 - **It never gets in the way.** On-device suggestions appear instantly and are
   replaced when the model answers. If it is slow, offline or refuses, they
   simply stay, with a short note saying why.
-- **Cost is yours.** Each suggestion is a small request billed to your key.
-  Repeated messages are remembered on the device and not asked for twice. For
-  Claude the default is Claude Opus 5.5, the most capable; Claude Haiku 5.5 is
-  one tap away and costs a small fraction as much.
+- **Cost is yours, and the model matters a great deal.** Each suggestion is a
+  small request billed to your key. As a rough guide from list prices, someone
+  who says a hundred sentences a day would spend a dollar or two a month with
+  Claude Haiku 5.5, about $30 with Claude Sonnet 5.5 and about $60 with Claude
+  Opus 5.5. Opus is the default because it understands the most; Haiku is one
+  tap away and is plenty for most messages. Repeated messages are remembered on
+  the device and not asked for twice, and the unchanging instructions are sent
+  in a way that lets the provider bill them at a reduced rate.
 - **The model is told to keep the person's meaning** and never to soften,
   censor or lecture: a communication aid that refuses to say what someone
   chose would take their voice away when it matters most. For Claude Opus 5.5

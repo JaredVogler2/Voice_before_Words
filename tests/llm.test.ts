@@ -198,7 +198,8 @@ describe('Claude', () => {
     expect(params.model).toBe('claude-opus-5-5');
     expect(params.betas).toEqual(['server-side-fallback-2026-07-01']);
     expect(params.fallbacks).toBe('default');
-    expect(params.system).toBe(SYSTEM_PROMPT);
+    // The unchanging instructions are sent as a cacheable block.
+    expect(params.system).toEqual([{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }]);
     const config = params.output_config as { effort: string; format: { type: string } };
     expect(config.effort).toBe('low');
     expect(config.format.type).toBe('json_schema');
