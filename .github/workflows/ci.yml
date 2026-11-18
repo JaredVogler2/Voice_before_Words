@@ -15,6 +15,7 @@ jobs:
   check:
     name: Types, unit tests, build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -27,6 +28,8 @@ jobs:
   browsers:
     name: Browser tests (Chromium, Firefox, WebKit)
     runs-on: ubuntu-latest
+    # Downloading three browsers occasionally hangs on the runner; fail fast instead of waiting for hours.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
