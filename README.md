@@ -34,9 +34,9 @@ looks: the group, then the word.*
   Speed, pitch and volume can be set, and names can be given a pronunciation.
 - **834 words, 788 of them with a picture.** A core board ordered by
   usefulness, 19 category boards, a spelling board, colour coding by word type,
-  and next-word prediction that learns from use. Positions never move, so they can be learned
-  by habit. Families can add their own words, photos and quick phrases, and
-  hide words they do not need.
+  and next-word prediction that learns from use. Positions never move, so they
+  can be learned by habit. Families can add their own words, photos and quick
+  phrases, and hide words they do not need.
 - **Five ways to choose**, all ending in the same action a finger would make:
 
   | | Needs | What to expect |
