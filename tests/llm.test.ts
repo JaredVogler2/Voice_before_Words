@@ -207,6 +207,11 @@ describe('Claude', () => {
     for (const banned of ['temperature', 'top_p', 'top_k', 'thinking']) expect(params).not.toHaveProperty(banned);
   });
 
+  test('the default is the fast, inexpensive model', () => {
+    expect(DEFAULT_AI_SETTINGS.provider).toBe('anthropic');
+    expect(DEFAULT_AI_SETTINGS.model).toBe('claude-haiku-5-5');
+  });
+
   test('Haiku has no server-side fallback, so it uses the plain endpoint', async () => {
     await aiSuggest(REQUEST, settings({ provider: 'anthropic', model: 'claude-haiku-5-5' }));
     expect(sdk.state.beta).toHaveLength(0);
@@ -364,7 +369,7 @@ describe('Gemini', () => {
 describe('the request wrapper', () => {
   test('context is only shared when the person allows it', async () => {
     await aiSuggest(REQUEST, settings({ provider: 'anthropic', shareHistory: false, shareProfile: false }));
-    const sent = JSON.stringify(sdk.state.beta[0].messages);
+    const sent = JSON.stringify(sdk.state.plain[0].messages);
     expect(sent).not.toContain('hungry');
     expect(sent).not.toContain('trains');
     expect(sent).toContain('I · go · bathroom');

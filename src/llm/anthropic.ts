@@ -162,11 +162,14 @@ export const anthropicProvider: Provider = {
   label: 'Claude (Anthropic)',
   keyUrl: 'https://platform.claude.com/settings/keys',
   keyHint: 'Starts with sk-ant-',
-  defaultModel: 'claude-opus-5-5',
+  // The default is the fast, inexpensive model: turning shorthand into a sentence
+  // is a small job, the answer is wanted within a second, and the person or their
+  // family is paying for every suggestion. The larger models are one tap away.
+  defaultModel: 'claude-haiku-5-5',
   models: [
-    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', note: 'Best understanding of what you mean. Slowest, and the most expensive: about a cent a suggestion.' },
-    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', note: 'In between: about half the cost of Opus.' },
-    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', note: 'Fastest, and about forty times cheaper than Opus. Plenty for most messages.' },
+    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', note: 'Fastest and by far the cheapest: a small fraction of a cent a suggestion. Plenty for most messages.' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', note: 'Understands more. About twenty times the cost of Haiku.' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', note: 'Understands the most. Slowest, and about forty times the cost of Haiku: roughly a cent a suggestion.' },
   ],
   needsBaseUrl: false,
   suggest,

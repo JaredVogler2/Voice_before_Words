@@ -142,15 +142,16 @@ What to know:
   small request billed to your key. As a rough guide from list prices, someone
   who says a hundred sentences a day would spend a dollar or two a month with
   Claude Haiku 5.5, about $30 with Claude Sonnet 5.5 and about $60 with Claude
-  Opus 5.5. Opus is the default because it understands the most; Haiku is one
-  tap away and is plenty for most messages. Repeated messages are remembered on
+  Opus 5.5. Haiku is the default: it is fast and is plenty for most messages.
+  The larger models are one tap away. Repeated messages are remembered on
   the device and not asked for twice, and the unchanging instructions are sent
   in a way that lets the provider bill them at a reduced rate.
 - **The model is told to keep the person's meaning** and never to soften,
   censor or lecture: a communication aid that refuses to say what someone
   chose would take their voice away when it matters most. For Claude Opus 5.5
   and Sonnet 5.5, a request the model declines is automatically retried on
-  another model by Anthropic's servers (the `fallbacks` option).
+  another model by Anthropic's servers (the `fallbacks` option). Claude Haiku
+  5.5 has no such retry; if it declines, the on-device suggestions stay.
 
 ## Privacy
 

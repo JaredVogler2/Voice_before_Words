@@ -167,7 +167,7 @@ test('an AI key: tested, used for suggestions, and never in the way when it fail
       status: 200,
       contentType: 'application/json',
       headers: cors,
-      body: JSON.stringify({ id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'text', text: JSON.stringify({ suggestions }) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 300, output_tokens: 20 } }),
+      body: JSON.stringify({ id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [{ type: 'text', text: JSON.stringify({ suggestions }) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 300, output_tokens: 20 } }),
     });
   });
 
@@ -177,7 +177,8 @@ test('an AI key: tested, used for suggestions, and never in the way when it fail
   await expect(page.getByText('It works.')).toBeVisible();
   // The request is the documented shape: the person's symbols, a response schema, no sampling parameters.
   const body = calls[0].body as { model: string; messages: { content: string }[]; output_config?: { format?: { type?: string } } };
-  expect(body.model).toBe('claude-opus-5-5');
+  // The default is the fast, inexpensive model.
+  expect(body.model).toBe('claude-haiku-5-5');
   expect(body.messages[0].content).toContain('I · go · bathroom');
   expect(body.output_config?.format?.type).toBe('json_schema');
   expect(body).not.toHaveProperty('temperature');
