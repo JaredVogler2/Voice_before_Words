@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { access, type AccessStatus } from '../access/controller';
 import { unlockSounds } from '../speech/sounds';
 import { speaker } from '../speech/speaker';
+import { listenNow } from '../state/listening';
 import { useSettings } from '../state/settings';
 import { useTalk } from '../state/talk';
 import { BrandMark, Icon } from './Icon';
@@ -130,6 +131,12 @@ export function Menu({ status, onClose }: MenuProps) {
               Say it again
             </button>
           ) : null}
+          {settings.listen.enabled ? (
+            <button type="button" className="menu-item" data-access="menu:listen" onClick={close(() => listenNow())}>
+              <Icon name="mic" />
+              Listen now
+            </button>
+          ) : null}
           <button type="button" className="menu-item" data-access="menu:access" onClick={close(() => go('/settings/access'))}>
             <Icon name="touch" />
             How I choose
@@ -147,10 +154,11 @@ export function Menu({ status, onClose }: MenuProps) {
             All settings
           </button>
         </div>
-        {settings.ai.enabled ? (
-          <label className="partner">
+        <label className="partner">
             <span className="row-title">What was just said to them?</span>
-            <span className="row-help">Optional, for whoever is talking with them. The AI uses it to suggest answers that fit. It is sent with the next suggestions and not kept.</span>
+            <span className="row-help">
+              Optional, for whoever is talking with them. The app offers answers that fit. {settings.ai.enabled ? 'It is sent to the AI with the next suggestions and not kept.' : 'It stays on this device and is not kept.'}
+            </span>
             <span className="field-row">
               <input className="field" data-direct value={talk.partnerSaid} maxLength={300} onChange={(event) => talk.setPartnerSaid(event.target.value)} placeholder="Do you want juice or milk?" aria-label="What the other person said" />
               {talk.partnerSaid ? (
@@ -160,7 +168,6 @@ export function Menu({ status, onClose }: MenuProps) {
               ) : null}
             </span>
           </label>
-        ) : null}
       </div>
     </div>
   );

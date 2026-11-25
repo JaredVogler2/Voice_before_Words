@@ -47,6 +47,21 @@ export interface SentenceSettings {
   autoHome: boolean;
 }
 
+/**
+ * Listening to the other person with the microphone. Off unless someone turns
+ * it on after reading what that means: the browser sends the sound to its maker
+ * (Google or Apple) to be turned into words.
+ */
+export interface ListenSettings {
+  enabled: boolean;
+  /** Start listening by itself each time the person has said something. */
+  auto: boolean;
+  /** How long to wait for the other person to speak. */
+  seconds: number;
+  /** When the explanation was read and agreed to, as a time; 0 if never. */
+  agreedAt: number;
+}
+
 export interface LookSettings {
   theme: Theme;
   tileSize: TileSize;
@@ -65,6 +80,7 @@ export interface Settings {
   voice: VoiceSettings;
   sentences: SentenceSettings;
   ai: AiSettings;
+  listen: ListenSettings;
   /** Keep the API key in this browser between visits. When off it is forgotten when the tab closes. */
   rememberKey: boolean;
   profile: { name: string; about: string };
@@ -89,6 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   sentences: { contractions: true, count: 3, predictions: true, autoHome: true },
   ai: DEFAULT_AI_SETTINGS,
+  listen: { enabled: false, auto: true, seconds: 10, agreedAt: 0 },
   rememberKey: true,
   profile: { name: '', about: '' },
   look: { theme: 'system', tileSize: 'auto', showLabels: true, colorCoding: true, reduceMotion: false },
@@ -98,7 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 interface SettingsStore extends Settings {
   /** Change one group of settings, e.g. `patch('voice', { rate: 1.2 })`. */
-  patch<K extends 'access' | 'voice' | 'sentences' | 'ai' | 'profile' | 'look'>(group: K, change: Partial<Settings[K]>): void;
+  patch<K extends 'access' | 'voice' | 'sentences' | 'ai' | 'listen' | 'profile' | 'look'>(group: K, change: Partial<Settings[K]>): void;
   set(change: Partial<Settings>): void;
   saveModel(key: string, model: PersonalModel): void;
   forgetModels(): void;
@@ -121,6 +138,7 @@ function withDefaults(saved: Partial<Settings> | undefined): Settings {
     voice: { ...DEFAULT_SETTINGS.voice, ...s.voice },
     sentences: { ...DEFAULT_SETTINGS.sentences, ...s.sentences },
     ai: { ...DEFAULT_SETTINGS.ai, ...s.ai },
+    listen: { ...DEFAULT_SETTINGS.listen, ...s.listen },
     profile: { ...DEFAULT_SETTINGS.profile, ...s.profile },
     look: { ...DEFAULT_SETTINGS.look, ...s.look },
     models: s.models ?? {},

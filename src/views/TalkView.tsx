@@ -4,6 +4,7 @@ import { recommendedTargetSize } from '../access/gazeModel';
 import { predictNext } from '../language/predict';
 import type { Suggestion, SuggestionKind } from '../language/types';
 import { PROVIDERS } from '../llm';
+import { listenNow, stopListening, useListening } from '../state/listening';
 import { useSettings, type Settings } from '../state/settings';
 import { phraseBoard } from '../state/phrases';
 import { currentLiteral, quickPhrases, useTalk } from '../state/talk';
@@ -63,10 +64,10 @@ const KIND_LABEL: Record<SuggestionKind, string> = {
   tell: 'tell',
 };
 
-function SuggestionButton({ slot, text, kind, ai, careful, onSelect }: { slot: number; text: string; kind: SuggestionKind; ai: boolean; careful: boolean; onSelect: () => void }) {
+function SuggestionButton({ slot, text, kind, ai, careful, starter, onSelect }: { slot: number; text: string; kind: SuggestionKind; ai: boolean; careful: boolean; /** Begins a message and opens a board, without speaking. */ starter?: boolean; onSelect: () => void }) {
   return (
     // Something spoken aloud cannot be taken back, so when pointing is imprecise a sentence takes a little longer to choose than a word.
-    <button type="button" className="suggestion" data-kind={kind} data-access={`say:${slot}:${text}`} data-access-group="sentences" data-dwell-scale={careful ? 1.3 : undefined} aria-label={`Say: ${text}`} onClick={onSelect}>
+    <button type="button" className="suggestion" data-kind={kind} data-starter={starter || undefined} data-access={`${starter ? 'start' : 'say'}:${slot}:${text}`} data-access-group="sentences" data-dwell-scale={careful && !starter ? 1.3 : undefined} aria-label={starter ? `Start: ${text}` : `Say: ${text}`} onClick={onSelect}>
       <span className="tag" data-kind={kind}>
         <Icon name={kind} />
         {KIND_LABEL[kind]}
@@ -74,7 +75,7 @@ function SuggestionButton({ slot, text, kind, ai, careful, onSelect }: { slot: n
       <span className="suggestion-text">{text}</span>
       <span className="suggestion-end">
         {ai ? <span className="spark"><Icon name="spark" title="Suggested by AI" /></span> : null}
-        <Icon name="speaker" />
+        <Icon name={starter ? 'forward' : 'speaker'} />
       </span>
     </button>
   );
@@ -188,6 +189,12 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
   const suggestions = useSteady(talk.suggestions).slice(0, count);
   const exact = currentLiteral(tokens);
   const quick = useMemo(() => quickPhrases(talk.history, talk.saved, count + 1), [talk.history, talk.saved, count]);
+  const replies = talk.replies.slice(0, count + 1);
+  const listening = useListening();
+  const hearing = listening.state === 'listening';
+  // Leaving the board (for settings, calibration) takes the "Listening" sign away, so the microphone goes off with it.
+  useEffect(() => stopListening, []);
+  const heardLabel = talk.partnerFrom === 'heard' ? 'Heard' : 'Answering';
   const slots = count + 1;
   const columns = low || large ? slots : viewport.width >= 720 ? 2 : 1;
 
@@ -268,7 +275,14 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
 
   const chips = (
     <div className="strip-words" ref={stripRef} aria-live="polite">
-      {empty ? <span className="strip-empty">Choose words to say something</span> : null}
+      {/* The microphone is never on without the screen saying so: this is in the message bar, which every layout shows. */}
+      {hearing ? (
+        <span className="listen-chip" role="status">
+          <Icon name="mic" />
+          <span>{listening.interim ? `Listening: ${listening.interim}` : 'Listening…'}</span>
+        </span>
+      ) : null}
+      {empty && !hearing ? <span className="strip-empty">{talk.partnerSaid ? `${heardLabel}: “${talk.partnerSaid}”` : 'Choose words to say something'}</span> : null}
       {tokens.map((token, index) => {
         const image = token.word ? vocabulary.image(token.word.id) : null;
         return (
@@ -283,7 +297,7 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
   );
 
   const sentences = (
-    <div className="suggestions" role="group" aria-label={tokens.length > 0 ? 'Ways to say it' : 'Quick phrases'}>
+    <div className="suggestions" role="group" aria-label={tokens.length > 0 ? 'Ways to say it' : replies.length > 0 ? 'Replies' : 'Quick phrases'}>
       {tokens.length > 0 ? (
         <>
           <SuggestionButton slot={0} text={exact} kind="words" ai={false} careful={large} onSelect={() => talk.say(exact)} />
@@ -294,6 +308,11 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
             <div key={`empty-${index}`} className="suggestion" data-empty="true" aria-hidden="true" />
           ))}
         </>
+      ) : replies.length > 0 ? (
+        // Someone has spoken: answers to that take the place of the everyday phrases.
+        replies.map((reply, index) => (
+          <SuggestionButton key={reply.text} slot={index} text={reply.text} kind={reply.kind} ai={reply.source === 'ai' || reply.source === 'memory'} careful={large} starter={!!reply.start} onSelect={() => talk.useReply(reply)} />
+        ))
       ) : (
         quick.map((text, index) => <SuggestionButton key={text} slot={index} text={text} kind="say" ai={false} careful={large} onSelect={() => talk.sayPhrase(text)} />)
       )}
@@ -482,6 +501,11 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
         <div className="strip" data-spoken={talk.spoken} aria-label="Your message" role="group">
           {chips}
           <div className="strip-actions" data-access-group="edit">
+            {settings.listen.enabled ? (
+              <button type="button" className="iconbtn" aria-label={hearing ? 'Stop listening' : 'Listen for a reply'} aria-pressed={hearing} data-access="edit:listen" onClick={() => (hearing ? stopListening() : listenNow())}>
+                <Icon name="mic" />
+              </button>
+            ) : null}
             <button type="button" className="iconbtn" aria-label="Remove the last word" disabled={empty} data-access="edit:back" onClick={() => talk.backspace()}>
               <Icon name="backspace" />
             </button>
@@ -499,12 +523,22 @@ export function TalkView({ onMenu }: { onMenu: () => void }) {
 
         {sentences}
 
-        {settings.ai.enabled || talk.partnerSaid ? (
+        {settings.ai.enabled || talk.partnerSaid || listening.message ? (
           <div className="ai-note" data-state={talk.ai} aria-live="polite">
-            {talk.partnerSaid ? (
+            {listening.message && !hearing ? (
               <>
-                <Icon name="say" />
-                <span>Answering: “{talk.partnerSaid}”</span>
+                <Icon name="warning" />
+                <span>{listening.message}</span>
+              </>
+            ) : talk.partnerSaid && talk.ai === 'waiting' && empty ? (
+              <>
+                <Icon name="spark" />
+                <span className="dots">Asking {provider.label} for replies</span>
+              </>
+            ) : talk.partnerSaid ? (
+              <>
+                <Icon name={talk.partnerFrom === 'heard' ? 'mic' : 'say'} />
+                <span>{empty ? 'Pick a reply, or choose your own words.' : `${heardLabel}: “${talk.partnerSaid}”`}</span>
               </>
             ) : talk.ai === 'waiting' ? (
               <>

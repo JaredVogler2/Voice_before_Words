@@ -4,6 +4,7 @@ import type { GestureKind } from '../access/gestures';
 import { PROVIDERS } from '../llm';
 import { speaker } from '../speech/speaker';
 import { rankVoices, type VoiceInfo } from '../speech/voices';
+import { listenNow } from '../state/listening';
 import { useSettings } from '../state/settings';
 import { useTalk } from '../state/talk';
 import { TRIAL_CONFIRM_MS, useTrial } from '../state/trial';
@@ -173,7 +174,14 @@ export function HandsFreeMenu({ status, via, onClose }: { status: AccessStatus; 
       back,
       { id: 'voice', icon: 'speaker', label: 'Voice', detail: voices.find((voice) => voice.uri === settings.voice.voiceUri)?.name ?? voices[0]?.name, onSelect: () => setScreen('voice') },
       { id: 'ai', icon: 'spark', label: 'Smart sentences', detail: settings.ai.enabled ? 'AI is on' : 'AI is off', onSelect: () => setScreen('ai') },
-      ...(camera ? [pause] : []),
+      // Turning listening on means reading and agreeing to a page, so only using it and pausing it are here.
+      ...(settings.listen.enabled ? [{ id: 'listen', icon: 'mic', label: 'Listen now', detail: 'Hear what is said to me', onSelect: done(() => listenNow()) } as Cell] : []),
+      // A screen holds six choices: with the camera in use, resting matters more than this switch.
+      ...(camera
+        ? [pause]
+        : settings.listen.enabled
+          ? [{ id: `listen-auto:${settings.listen.auto ? 'on' : 'off'}`, icon: 'mic', label: settings.listen.auto ? 'Stop listening by itself' : 'Listen after I speak', detail: settings.listen.auto ? 'Now: after each sentence' : 'Now: only when asked', onSelect: () => settings.patch('listen', { auto: !settings.listen.auto }) } as Cell]
+          : []),
       { id: 'all', icon: 'settings', label: 'All settings', detail: 'These pages need touch', onSelect: done(() => go('/settings')) },
     ];
   } else if (screen === 'voice') {

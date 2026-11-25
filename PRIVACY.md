@@ -1,7 +1,10 @@
 # Privacy
 
 What someone says with a communication aid is as private as anything a person
-says. This app is built so that, by default, none of it goes anywhere.
+says. This app is built so that, by default, none of it goes anywhere. Two
+things can change that, and both are off until someone turns them on: an
+[AI model](#an-ai-model-if-you-turn-one-on) and
+[listening for replies](#listening-for-replies-if-you-turn-it-on).
 
 There is no server belonging to this project. There is no account, no
 advertising, no analytics and no tracking, and the app loads nothing from any
@@ -62,6 +65,41 @@ What the provider does with it is governed by their terms, not this project's.
 Read them before using this with a child or anyone who cannot agree to it for
 themselves. To keep every word on your own hardware, choose "Other" and point
 it at a model running on your own computer.
+
+## Listening for replies, if you turn it on
+
+This is off, and the microphone is never used, until someone opens
+Settings → Listen for replies, reads what it means, ticks that they have read
+it, and turns it on. It is the only part of the app that takes in another
+person's voice. When it is on:
+
+- **The sound leaves the device.** The app uses the browser's own speech
+  recognition. The browser sends the sound from the microphone to its maker
+  (Google in Chrome, Apple in Safari, Microsoft in Edge) to be turned into
+  words. This project does not choose that, cannot stop it, and has no say
+  over what they do with it. Their terms apply.
+- **It hears everyone nearby,** not only the person being spoken with.
+- **When it listens:** for a few seconds after the person says something, or
+  when the microphone button or "Listen now" is used. Never while the app is
+  speaking, and never all the time. The message bar shows "Listening" for
+  exactly as long as it is on.
+- **What is kept:** the other person's words are shown on the screen and held
+  in memory for the conversation (the last twelve things said, for fifteen
+  minutes at most), so that replies can follow it. They are not saved to the
+  device and are gone when the page is closed. The sound itself never reaches
+  this app at all.
+- **With an AI model also on:** what was heard, and the recent things each
+  person said, are sent to the AI provider to suggest replies. Switching off
+  "share recent sentences" keeps the earlier conversation back; the sentence
+  being answered is still sent, because it is the question.
+- **Turning it off** stops the microphone being used. Turning it on again
+  means agreeing again.
+
+Tell the people you talk with that the device is listening. In some places
+the law requires their agreement before their voice is captured.
+
+Typing what was said into "What was just said to them?" (in the Menu) gives the
+same replies without the microphone, and stays on the device unless AI is on.
 
 ## Whoever hosts the app
 

@@ -33,6 +33,42 @@ Label each suggestion with a kind:
 - ask: a question
 - tell: asking someone to do something`;
 
+/**
+ * The instructions for suggesting replies, used when someone has spoken to the
+ * person and they have not chosen any symbols yet.
+ *
+ * This is a different job from the one above, and a riskier one: the model is
+ * guessing what the person wants to say, not tidying what they did say. So the
+ * suggestions must cover the different answers a person could give, never lean
+ * towards one, and never invent facts about their life.
+ */
+export const REPLY_SYSTEM_PROMPT = `You suggest replies for a person who uses an AAC communication board.
+
+The person cannot rely on speech. Someone has just said something to them. Suggest short replies they might want to give. They will pick one and it will be spoken aloud as their own voice, or they will ignore all of them and build their own answer from symbols. You are offering shortcuts, not speaking for them.
+
+How to write the replies:
+- Speak as the person, in the first person. Never talk about them or to them.
+- Offer genuinely different answers, not different wordings of one answer. To a yes-or-no question give both a yes and a no. To a choice give each option. Never steer them towards the answer the other person seems to want.
+- For an open question such as "What do you want to eat?", suggest the most likely specific answers. Prefer things named in the "About the person" notes or earlier in the conversation. Otherwise use common everyday answers.
+- Do not invent facts about their life, health, feelings or what happened to them. When an honest answer needs something only they know, offer the likely possibilities and include "I don't know." among them.
+- Keep each reply short, plain and natural, the way people really answer: usually one short sentence.
+- Do not soften, censor or lecture. Refusing, disagreeing and complaining are ordinary answers and should be offered when they fit.
+- Use the conversation so far to work out what the question refers to.
+
+Label each reply with a kind:
+- want: a wish or need
+- say: a plain statement or answer
+- now: something happening now
+- past: something that already happened
+- future: something that will happen
+- ask: a question back
+- tell: asking someone to do something`;
+
+/** The instructions that fit a request. */
+export function systemPromptFor(request: AiRequest): string {
+  return request.mode === 'replies' ? REPLY_SYSTEM_PROMPT : SYSTEM_PROMPT;
+}
+
 const KINDS: SuggestionKind[] = ['want', 'say', 'now', 'past', 'future', 'ask', 'tell'];
 
 /** JSON Schema for the reply, used by providers that can enforce one. */
@@ -67,6 +103,7 @@ function clip(text: string, limit: number): string {
 
 /** The per-request message: the symbols plus whatever context the person allows. */
 export function buildUserMessage(request: AiRequest): string {
+  if (request.mode === 'replies') return buildReplyMessage(request);
   const lines: string[] = [`Symbols: ${request.words.map((word) => clip(word, 60)).join(' · ')}`];
 
   const about = clip(request.about, 600);
@@ -84,6 +121,26 @@ export function buildUserMessage(request: AiRequest): string {
     '',
     `Give up to ${request.max} suggestions.` +
       (request.contractions ? '' : ' Do not use contractions (write "I am", "do not").'),
+  );
+  return lines.join('\n');
+}
+
+/** The per-request message when asking for replies: what was said to the person, and the talk around it. */
+function buildReplyMessage(request: AiRequest): string {
+  const lines: string[] = [`Someone just said to the person: "${clip(request.partnerSaid, 300)}"`];
+
+  const about = clip(request.about, 600);
+  if (about) lines.push('', `About the person: ${about}`);
+
+  const turns = (request.turns ?? []).slice(-8).filter((turn) => turn.text.trim());
+  if (turns.length > 0) {
+    lines.push('', 'The conversation before that, oldest first:');
+    for (const turn of turns) lines.push(`- ${turn.who === 'me' ? 'The person' : 'The other person'} said: "${clip(turn.text, 160)}"`);
+  }
+
+  lines.push(
+    '',
+    `Give up to ${request.max} replies.` + (request.contractions ? '' : ' Do not use contractions (write "I am", "do not").'),
   );
   return lines.join('\n');
 }

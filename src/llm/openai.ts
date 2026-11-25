@@ -1,5 +1,5 @@
 import { joinUrl, requestJson } from './http';
-import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, RESPONSE_SCHEMA, SYSTEM_PROMPT } from './prompt';
+import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, RESPONSE_SCHEMA, systemPromptFor } from './prompt';
 import { AiError, type AiRequest, type AiSentence, type AiSettings, type Provider } from './types';
 
 /**
@@ -54,7 +54,7 @@ function makeProvider(options: {
     if (!model) throw new AiError('config', 'Choose a model first.');
     const url = joinUrl(baseFor(settings), 'chat/completions');
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPromptFor(request) },
       { role: 'user', content: `${buildUserMessage(request)}\n\n${JSON_INSTRUCTIONS}` },
     ];
 

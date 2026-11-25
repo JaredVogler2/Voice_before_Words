@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { buildUserMessage, parseSentences, SYSTEM_PROMPT } from '../src/llm/prompt';
+import { buildUserMessage, parseSentences, REPLY_SYSTEM_PROMPT, SYSTEM_PROMPT, systemPromptFor } from '../src/llm/prompt';
 import { AiError, aiSuggest, DEFAULT_AI_SETTINGS, isAiReady, SuggestionMemory, testConnection, type AiRequest, type AiSettings } from '../src/llm';
 
 // ── A stand-in for the Anthropic SDK that records what it was asked to do ──
@@ -138,6 +138,60 @@ describe('the prompt', () => {
     expect(message).not.toContain('Recent conversation');
     expect(message.length).toBeLessThan(900);
     expect(buildUserMessage({ ...REQUEST, contractions: false })).toContain('Do not use contractions');
+  });
+});
+
+describe('suggesting replies to what someone said', () => {
+  const ASKED: AiRequest = {
+    words: [],
+    history: [],
+    about: 'Sam, 9, loves trains and cereal.',
+    partnerSaid: 'What do you want to eat?',
+    mode: 'replies',
+    turns: [
+      { who: 'me', text: 'I am hungry.' },
+      { who: 'partner', text: 'Okay.' },
+    ],
+    max: 4,
+    contractions: true,
+  };
+
+  test('has its own instructions: different answers, both sides, no invented facts', () => {
+    expect(systemPromptFor(ASKED)).toBe(REPLY_SYSTEM_PROMPT);
+    expect(systemPromptFor(REQUEST)).toBe(SYSTEM_PROMPT);
+    expect(REPLY_SYSTEM_PROMPT).toContain('give both a yes and a no');
+    expect(REPLY_SYSTEM_PROMPT).toContain('Do not invent facts');
+    expect(REPLY_SYSTEM_PROMPT).toContain('Never steer');
+  });
+
+  test('sends what was said and both sides of the conversation, oldest first', () => {
+    const message = buildUserMessage(ASKED);
+    expect(message).toContain('Someone just said to the person: "What do you want to eat?"');
+    expect(message).toContain('About the person: Sam, 9, loves trains and cereal.');
+    expect(message.indexOf('The person said: "I am hungry."')).toBeLessThan(message.indexOf('The other person said: "Okay."'));
+    expect(message).toContain('Give up to 4 replies.');
+    expect(message).not.toContain('Symbols:');
+  });
+
+  test('is sent with no symbols chosen, using the reply instructions', async () => {
+    sdk.state.reply = claudeReply(JSON.stringify({ suggestions: [{ text: 'I want cereal.', kind: 'want' }, { text: "I'm not hungry.", kind: 'say' }] }));
+    const out = await aiSuggest(ASKED, settings({ provider: 'anthropic' }));
+    expect(out.map((item) => item.text)).toEqual(['I want cereal.', "I'm not hungry."]);
+    const params = sdk.state.plain[0] as { system: { text: string }[] };
+    expect(params.system[0].text).toBe(REPLY_SYSTEM_PROMPT);
+  });
+
+  test('the conversation is left out when sharing it is off, but the question still goes', async () => {
+    await aiSuggest(ASKED, settings({ provider: 'anthropic', shareHistory: false, shareProfile: false }));
+    const sent = JSON.stringify(sdk.state.plain[0].messages);
+    expect(sent).toContain('What do you want to eat?');
+    expect(sent).not.toContain('hungry');
+    expect(sent).not.toContain('trains');
+  });
+
+  test('nothing said means no call', async () => {
+    expect(await aiSuggest({ ...ASKED, partnerSaid: '  ' }, settings({ provider: 'openai', model: 'gpt-test' }))).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

@@ -1,5 +1,5 @@
 import { requestJson } from './http';
-import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, SYSTEM_PROMPT } from './prompt';
+import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, systemPromptFor } from './prompt';
 import { AiError, type AiRequest, type AiSentence, type AiSettings, type Provider } from './types';
 
 /** Google Gemini through the Generative Language API. Has a free tier, which matters for a free app. */
@@ -47,7 +47,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
   if (!model) throw new AiError('config', 'Choose a model first.');
   const url = `${BASE}/${modelPath(model)}:generateContent`;
   const body = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: systemPromptFor(request) }] },
     contents: [{ role: 'user', parts: [{ text: `${buildUserMessage(request)}\n\n${JSON_INSTRUCTIONS}` }] }],
     generationConfig: {
       responseMimeType: 'application/json',

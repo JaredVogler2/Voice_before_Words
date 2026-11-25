@@ -72,10 +72,12 @@ async function withDeadline<T>(
 export async function aiSuggest(request: AiRequest, settings: AiSettings, signal?: AbortSignal): Promise<Suggestion[]> {
   const provider = PROVIDERS[settings.provider];
   if (!provider) throw new AiError('config', 'Unknown AI provider.');
-  if (request.words.length === 0) return [];
+  const replies = request.mode === 'replies';
+  if (replies ? !request.partnerSaid.trim() : request.words.length === 0) return [];
   const filtered: AiRequest = {
     ...request,
     history: settings.shareHistory ? request.history : [],
+    turns: settings.shareHistory ? request.turns : [],
     about: settings.shareProfile ? request.about : '',
   };
   const sentences = await withDeadline(settings.timeoutMs, signal, (inner) => provider.suggest(filtered, settings, inner));

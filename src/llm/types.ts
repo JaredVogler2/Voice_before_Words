@@ -26,8 +26,15 @@ export interface AiRequest {
   history: string[];
   /** Free-text notes the person or their supporter wrote about themselves. */
   about: string;
-  /** What the other person just said, if someone typed it in. */
+  /** What the other person just said, typed in by someone or heard by the microphone. */
   partnerSaid: string;
+  /**
+   * 'sentences' (the default) turns the chosen symbols into sentences.
+   * 'replies' is for when nothing has been chosen yet: it suggests answers to `partnerSaid`.
+   */
+  mode?: 'sentences' | 'replies';
+  /** Both sides of the recent conversation, oldest first. Used for replies in place of `history`. */
+  turns?: { who: 'me' | 'partner'; text: string }[];
   /** How many suggestions to ask for. */
   max: number;
   contractions: boolean;

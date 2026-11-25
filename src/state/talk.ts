@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { access } from '../access/controller';
 import { literal, suggest } from '../language/engine';
+import { localReplies, type Reply } from '../language/replies';
 import { emptyUsage, learn, type UsageModel } from '../language/predict';
 import type { Suggestion, Token } from '../language/types';
 import { AiError, aiSuggest, describeAiError, isAiReady, SuggestionMemory } from '../llm';
@@ -9,6 +10,7 @@ import { speaker } from '../speech/speaker';
 import { HOME_BOARD } from '../vocab/boards';
 import { getWord } from '../vocab/lexicon';
 import type { Word } from '../vocab/types';
+import { listenAfter, onHeard } from './listening';
 import { cleanFavourites, MAX_FAVOURITES } from './phrases';
 import { useSettings } from './settings';
 
@@ -25,6 +27,24 @@ export interface Spoken {
 
 export type AiState = 'off' | 'waiting' | 'ready' | 'failed';
 
+/** One thing said in the conversation, by the person or by whoever is talking with them. */
+export interface Turn {
+  who: 'me' | 'partner';
+  text: string;
+  at: number;
+}
+
+/** How much of the conversation is kept in mind, and for how long after it goes quiet. */
+const MAX_TURNS = 12;
+const TURN_LIFE_MS = 15 * 60 * 1000;
+
+function withTurn(turns: Turn[], who: Turn['who'], text: string): Turn[] {
+  const now = Date.now();
+  const clean = text.trim();
+  const fresh = turns.filter((turn) => now - turn.at < TURN_LIFE_MS);
+  return clean ? [...fresh, { who, text: clean, at: now }].slice(-MAX_TURNS) : fresh;
+}
+
 interface TalkStore {
   tokens: Token[];
   /** Letters being spelled on the keyboard, not yet added as a word. */
@@ -38,8 +58,17 @@ interface TalkStore {
   aiMessage: string;
   /** What Clear removed, so it can be put back. */
   cleared: Token[] | null;
-  /** What the other person said, if someone typed it in for context. */
+  /** What the other person said: typed in by someone, or heard by the microphone. */
   partnerSaid: string;
+  /** Where `partnerSaid` came from, so the screen can say "Heard" only for the microphone. */
+  partnerFrom: 'typed' | 'heard';
+  /** Answers on offer to `partnerSaid` while no words have been chosen yet. */
+  replies: Reply[];
+  /**
+   * Both sides of the current conversation, so replies can follow it. Kept in
+   * memory only: the other person's words are never saved to the device.
+   */
+  turns: Turn[];
   /** The sentence last spoken, shown so it can be read or repeated. */
   lastSaid: string;
 
@@ -61,6 +90,10 @@ interface TalkStore {
   open(board: string): void;
   setPage(page: number): void;
   setPartnerSaid(text: string): void;
+  /** The microphone heard the other person say this. */
+  heard(text: string): void;
+  /** Use a suggested reply: speak it, or for a starter, begin the message with it. */
+  useReply(reply: Reply): void;
   /** Add a sentence to the favourites, or take it out. */
   toggleSaved(text: string): void;
   /** Replace the favourites, for restoring a backup. */
@@ -122,6 +155,9 @@ export const useTalk = create<TalkStore>()(
       aiMessage: '',
       cleared: null,
       partnerSaid: '',
+      partnerFrom: 'typed',
+      replies: [],
+      turns: [],
       lastSaid: '',
       history: [],
       usage: emptyUsage(),
@@ -183,12 +219,14 @@ export const useTalk = create<TalkStore>()(
       },
 
       say(text) {
-        const { tokens, history, usage } = get();
-        void speaker.speak(text, speakOptions());
+        const { tokens, history, usage, partnerSaid, turns } = get();
+        listenAfter(speaker.speak(text, speakOptions()));
         set({
           spoken: true,
           // What the other person said was context for this answer only.
           partnerSaid: '',
+          replies: [],
+          turns: withTurn(withTurn(turns, 'partner', partnerSaid), 'me', text),
           lastSaid: text,
           history: [...history, { text, at: Date.now() }].slice(-200),
           usage: learn(usage, tokens.map((token) => token.id)),
@@ -196,8 +234,16 @@ export const useTalk = create<TalkStore>()(
       },
 
       sayPhrase(text) {
-        void speaker.speak(text, speakOptions());
-        set((state) => ({ lastSaid: text, history: [...state.history, { text, at: Date.now() }].slice(-200) }));
+        // A whole phrase said while a question is waiting, with no message started, is the answer to it.
+        const answering = get().tokens.length === 0 && !!get().partnerSaid;
+        listenAfter(speaker.speak(text, speakOptions()));
+        set((state) => ({
+          partnerSaid: answering ? '' : state.partnerSaid,
+          turns: withTurn(answering ? withTurn(state.turns, 'partner', state.partnerSaid) : state.turns, 'me', text),
+          lastSaid: text,
+          history: [...state.history, { text, at: Date.now() }].slice(-200),
+        }));
+        if (answering) get().refresh();
       },
 
       open(board) {
@@ -212,7 +258,38 @@ export const useTalk = create<TalkStore>()(
       },
 
       setPartnerSaid(text) {
-        set({ partnerSaid: text });
+        set({ partnerSaid: text, partnerFrom: 'typed' });
+        get().refresh();
+      },
+
+      heard(text) {
+        const clean = text.trim();
+        if (!clean) return;
+        // Something said earlier and never answered is still part of the conversation.
+        set((state) => ({
+          partnerSaid: clean,
+          partnerFrom: 'heard',
+          turns: withTurn(state.turns, 'partner', state.partnerSaid),
+          // A message that has already been spoken makes way for the answers to what came back.
+          tokens: state.spoken ? [] : state.tokens,
+          spoken: false,
+        }));
+        access.layoutChanged();
+        get().refresh();
+      },
+
+      useReply(reply) {
+        if (!reply.start) {
+          get().sayPhrase(reply.text);
+          return;
+        }
+        const tokens: Token[] = [];
+        for (const id of reply.start.words) {
+          const word = getWord(id);
+          if (word) tokens.push({ id: word.id, text: word.text, word });
+        }
+        set({ tokens, typed: '', spoken: false, cleared: null, board: reply.start.board, page: 0 });
+        access.layoutChanged();
         get().refresh();
       },
 
@@ -227,11 +304,11 @@ export const useTalk = create<TalkStore>()(
       forgetHistory() {
         memory.clear();
         // Favourites were chosen on purpose, so clearing the history leaves them alone.
-        set({ history: [], usage: emptyUsage(), memory: [], lastSaid: '' });
+        set({ history: [], usage: emptyUsage(), memory: [], lastSaid: '', turns: [], partnerSaid: '', replies: [] });
       },
 
       refresh() {
-        const { tokens, partnerSaid, history } = get();
+        const { tokens, partnerSaid, history, turns } = get();
         const settings = useSettings.getState();
         const max = settings.sentences.count;
         pending?.abort();
@@ -240,10 +317,50 @@ export const useTalk = create<TalkStore>()(
         timer = null;
 
         const ready = isAiReady(settings.ai);
+        const about = [settings.profile.name && `Their name is ${settings.profile.name}.`, settings.profile.about].filter(Boolean).join(' ');
         if (tokens.length === 0) {
-          set({ suggestions: [], ai: ready ? 'ready' : 'off', aiMessage: '' });
+          const heard = partnerSaid.trim();
+          if (!heard) {
+            set({ suggestions: [], replies: [], ai: ready ? 'ready' : 'off', aiMessage: '' });
+            return;
+          }
+          // Someone has spoken and nothing is chosen yet: offer answers. On-device ones show at once.
+          const slots = max + 1;
+          const local = localReplies(heard, { name: settings.profile.name, contractions: settings.sentences.contractions, max: slots });
+          if (!ready) {
+            set({ suggestions: [], replies: local, ai: 'off', aiMessage: '' });
+            return;
+          }
+          set({ suggestions: [], replies: local, ai: 'waiting', aiMessage: '' });
+          const controller = new AbortController();
+          pending = controller;
+          timer = setTimeout(() => {
+            aiSuggest(
+              { words: [], history: [], about, partnerSaid: heard, mode: 'replies', turns: turns.map(({ who, text }) => ({ who, text })), max: slots, contractions: settings.sentences.contractions },
+              settings.ai,
+              controller.signal,
+            )
+              .then((fromAi) => {
+                if (controller.signal.aborted || get().partnerSaid.trim() !== heard || get().tokens.length > 0) return;
+                // The AI's answers first, then a starter towards the right board, then on-device ones to fill up.
+                const starters = local.filter((reply) => reply.start);
+                const merged: Reply[] = [];
+                for (const reply of [...fromAi.slice(0, starters.length > 0 ? slots - 1 : slots), ...starters, ...local]) {
+                  if (!merged.some((item) => item.text.toLowerCase() === reply.text.toLowerCase())) merged.push(reply);
+                  if (merged.length >= slots) break;
+                }
+                set({ replies: merged, ai: 'ready', aiMessage: '' });
+              })
+              .catch((error: unknown) => {
+                if (controller.signal.aborted) return;
+                const failure = error instanceof AiError ? error : new AiError('network', 'Something went wrong.');
+                if (failure.kind === 'aborted') return;
+                set({ ai: 'failed', aiMessage: describeAiError(failure) });
+              });
+          }, 350);
           return;
         }
+        if (get().replies.length > 0) set({ replies: [] });
         const exact = literal(tokens);
         const local = suggest(tokens, { contractions: settings.sentences.contractions, max });
         // One word alone is handled well on the device; the AI earns its keep from two words up.
@@ -269,7 +386,7 @@ export const useTalk = create<TalkStore>()(
             {
               words,
               history: history.slice(-4).map((item) => item.text),
-              about: [settings.profile.name && `Their name is ${settings.profile.name}.`, settings.profile.about].filter(Boolean).join(' '),
+              about,
               partnerSaid,
               max,
               contractions: settings.sentences.contractions,
@@ -314,6 +431,9 @@ export const useTalk = create<TalkStore>()(
     },
   ),
 );
+
+// What the microphone hears goes into the conversation.
+onHeard((text) => useTalk.getState().heard(text));
 
 /** The exact words of the message being built. */
 export function currentLiteral(tokens: Token[]): string {

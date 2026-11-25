@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, RESPONSE_SCHEMA, SYSTEM_PROMPT } from './prompt';
+import { buildUserMessage, JSON_INSTRUCTIONS, parseSentences, RESPONSE_SCHEMA, systemPromptFor } from './prompt';
 import { AiError, type AiRequest, type AiSentence, type AiSettings, type Provider } from './types';
 
 /**
@@ -30,7 +30,7 @@ function supportsFallback(model: string): boolean {
  * at a small fraction of the normal price. (A prompt too short for a given
  * model to cache is simply sent as usual.)
  */
-const SYSTEM = [{ type: 'text' as const, text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' as const } }];
+const systemFor = (request: AiRequest) => [{ type: 'text' as const, text: systemPromptFor(request), cache_control: { type: 'ephemeral' as const } }];
 
 type AnthropicModule = typeof import('@anthropic-ai/sdk');
 let sdk: Promise<AnthropicModule> | undefined;
@@ -105,7 +105,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
         {
           model,
           max_tokens: 2048,
-          system: SYSTEM,
+          system: systemFor(request),
           messages,
           betas: [FALLBACK_BETA],
           fallbacks: 'default',
@@ -120,7 +120,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
         {
           model,
           max_tokens: 2048,
-          system: SYSTEM,
+          system: systemFor(request),
           messages,
           ...(outputConfig ? { output_config: outputConfig } : {}),
         },
@@ -131,7 +131,7 @@ async function suggest(request: AiRequest, settings: AiSettings, signal: AbortSi
     }
 
     // Always check why the model stopped before trusting the content.
-    if (stopReason === 'refusal') throw new AiError('refused', 'Claude declined to rewrite this one.');
+    if (stopReason === 'refusal') throw new AiError('refused', request.mode === 'replies' ? 'Claude declined to suggest replies to this one.' : 'Claude declined to rewrite this one.');
     const text = content
       .filter((block) => block.type === 'text' && typeof block.text === 'string')
       .map((block) => block.text)

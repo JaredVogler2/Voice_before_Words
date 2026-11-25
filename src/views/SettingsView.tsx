@@ -15,6 +15,7 @@ import { go, useAccessStatus } from '../ui/hooks';
 import { requestKeptStorage, storageIsKept } from '../ui/overlays';
 import { categoryBoards } from '../vocab/boards';
 import { AiSettingsPage } from './SettingsAi';
+import { ListenSettingsPage } from './SettingsListen';
 import { METHODS } from './methods';
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
@@ -47,6 +48,7 @@ function Index() {
           <NavRow id="access" icon={method.icon} title="How you choose" help={method.title} onClick={() => go('/settings/access')} />
           <NavRow id="voice" icon="speaker" title="Voice" help="Which voice, how fast, how loud" onClick={() => go('/settings/voice')} />
           <NavRow id="ai" icon="spark" title="Smart sentences" help={settings.ai.enabled ? 'AI is on' : 'On-device only'} onClick={() => go('/settings/ai')} />
+          <NavRow id="listen" icon="mic" title="Listen for replies" help={settings.listen.enabled ? 'The microphone is on' : 'Off'} onClick={() => go('/settings/listen')} />
           <NavRow id="look" icon="palette" title="Look and layout" help="Theme, tile size, suggestions" onClick={() => go('/settings/look')} />
           <NavRow id="words" icon="book" title="Words" help="Add your own, hide ones you don’t use" onClick={() => go('/settings/words')} />
           <NavRow id="data" icon="shield" title="Privacy and your data" help="What is kept, backup, reset" onClick={() => go('/settings/data')} />
@@ -616,7 +618,7 @@ function DataPage() {
       <PageHeader title="Privacy and your data" onBack={() => go('/settings')} />
       <div className="page-body">
         <div className="note ok">
-          <strong>Everything stays on this device unless you turn on AI.</strong>
+          <strong>Everything stays on this device unless you turn on AI or listening.</strong>
           <ul>
             <li>No account, no adverts, no tracking, no analytics.</li>
             <li>Words, history, settings and calibration are kept in this browser only.</li>
@@ -625,6 +627,11 @@ function DataPage() {
               {settings.ai.enabled
                 ? 'AI is on: the symbols you choose, and the context you allow, are sent to the provider you chose so it can suggest sentences.'
                 : 'AI is off: sentences are made on the device.'}
+            </li>
+            <li>
+              {settings.listen.enabled
+                ? 'Listening is on: while the screen says “Listening”, the browser sends the sound from the microphone to its maker (Google, Apple or Microsoft) to be turned into words. The other person’s words are not saved.'
+                : 'Listening is off: the microphone is never used.'}
             </li>
           </ul>
         </div>
@@ -767,11 +774,12 @@ export function SettingsView({ route }: { route: string }) {
       {section === 'access' ? <AccessPage /> : null}
       {section === 'voice' ? <VoicePage /> : null}
       {section === 'ai' ? <AiSettingsPage /> : null}
+      {section === 'listen' ? <ListenSettingsPage /> : null}
       {section === 'look' ? <LookPage /> : null}
       {section === 'words' ? <WordsPage /> : null}
       {section === 'data' ? <DataPage /> : null}
       {section === 'about' ? <AboutPage /> : null}
-      {!['access', 'voice', 'ai', 'look', 'words', 'data', 'about'].includes(section) ? <Index /> : null}
+      {!['access', 'voice', 'ai', 'listen', 'look', 'words', 'data', 'about'].includes(section) ? <Index /> : null}
     </div>
   );
 }

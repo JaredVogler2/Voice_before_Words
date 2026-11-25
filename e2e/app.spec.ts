@@ -299,10 +299,149 @@ test('an AI key: tested, used for suggestions, and never in the way when it fail
   expect(problems.filter((problem) => !problem.includes('401'))).toEqual([]);
 });
 
+/** A stand-in for the browser's speech recognition, so a test can say what the other person said. */
+async function fakeMicrophone(page: Page) {
+  await page.addInitScript(() => {
+    type Handler = ((event?: unknown) => void) | null;
+    const scope = window as unknown as Record<string, unknown>;
+    class FakeRecognition {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      maxAlternatives = 1;
+      onstart: Handler = null;
+      onresult: Handler = null;
+      onerror: Handler = null;
+      onend: Handler = null;
+      start() {
+        scope.__listening = this;
+        scope.__starts = ((scope.__starts as number) ?? 0) + 1;
+        setTimeout(() => this.onstart?.(), 0);
+      }
+      stop() {
+        if (scope.__listening === this) scope.__listening = null;
+        this.onend?.();
+      }
+      abort() {
+        if (scope.__listening === this) scope.__listening = null;
+      }
+      say(text: string) {
+        this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: true })] });
+        scope.__listening = null;
+        this.onend?.();
+      }
+    }
+    scope.SpeechRecognition = FakeRecognition;
+    scope.webkitSpeechRecognition = FakeRecognition;
+  });
+}
+
+/** The other person says something, once the app is listening. */
+async function partnerSays(page: Page, text: string) {
+  await page.waitForFunction(() => !!(window as unknown as { __listening?: unknown }).__listening, null, { timeout: 20_000 });
+  await page.evaluate((said) => (window as unknown as { __listening: { say(text: string): void } }).__listening.say(said), text);
+}
+
+test('listening for replies: off until agreed to, then answers are offered to what is heard', async ({ page }) => {
+  const problems = watch(page);
+  await seed(page);
+  await fakeMicrophone(page);
+  const starts = () => page.evaluate(() => (window as unknown as { __starts?: number }).__starts ?? 0);
+  const aiCalls: Record<string, unknown>[] = [];
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    aiCalls.push(JSON.parse(route.request().postData() ?? '{}'));
+    const suggestions = [{ text: 'I want cereal.', kind: 'want' }, { text: 'I want toast.', kind: 'want' }];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [{ type: 'text', text: JSON.stringify({ suggestions }) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 300, output_tokens: 40 } }),
+    });
+  });
+
+  // Off by default: no microphone button, and saying something does not start the microphone.
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Listen for a reply' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Say: I need help.' }).click();
+  await page.waitForTimeout(600);
+  expect(await starts()).toBe(0);
+
+  // Turning it on means reading what it does and ticking that it was read.
+  await page.goto('/#/settings');
+  await page.getByRole('button', { name: /Listen for replies/ }).click();
+  const disclaimer = page.getByTestId('listen-disclaimer');
+  await expect(disclaimer).toContainText('Another person’s voice leaves this device.');
+  await expect(disclaimer).toContainText('The people you talk with should know.');
+  const turnOn = page.getByRole('button', { name: 'Turn on listening' });
+  await expect(turnOn).toBeDisabled();
+  await disclaimer.getByRole('checkbox').check();
+  await turnOn.click();
+  await expect(page.getByText('Listening is on.')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+
+  // The test on this page shows what was heard and what would be offered, and goes no further.
+  await page.getByRole('button', { name: 'Listen now' }).click();
+  await partnerSays(page, 'do you want juice or milk');
+  await expect(page.getByTestId('listen-sample')).toContainText('Juice.');
+  await expect(page.getByTestId('listen-sample')).toContainText('Milk.');
+
+  // On the board: say something, and the app listens for the answer by itself.
+  await page.goto('/#/');
+  await expect(page.locator('.strip-empty')).toHaveText('Choose words to say something');
+  await page.getByRole('button', { name: 'Say: I need help.' }).click();
+  // Some browsers take a few seconds to report that the voice has finished.
+  await expect(page.locator('.listen-chip')).toContainText('Listening', { timeout: 20_000 });
+  await partnerSays(page, 'what do you want to eat');
+  await expect(page.locator('.listen-chip')).toHaveCount(0);
+  await expect(page.locator('.strip-empty')).toHaveText('Heard: “What do you want to eat”');
+  // No AI: a head start to the right words, and ways to decline. Nothing is spoken by itself.
+  await expect(page.getByRole('group', { name: 'Replies' }).getByRole('button')).toHaveText([/I want … \(food\)/, /I'm not hungry\./, /I don't know\./]);
+  await page.getByRole('button', { name: 'Start: I want … (food)' }).click();
+  await expect(message(page)).toHaveText(['I', 'want']);
+  await tile(page, 'cereal').click();
+  await expect(sentences(page)).toContainText(['I want cereal.']);
+  await page.getByRole('button', { name: 'Say: I want cereal.' }).click();
+
+  // A yes-or-no question offers both answers, and choosing one speaks it and clears the question.
+  await partnerSays(page, 'do you want milk with it');
+  await expect(page.getByRole('button', { name: 'Say: Yes, please.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Say: No, thank you.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Say: No, thank you.' }).click();
+  await expect(page.getByRole('group', { name: 'Quick phrases' })).toBeVisible();
+
+  // With an AI key, likely answers come first, and the model is told both sides of the conversation.
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('voice-before-words:settings')!);
+    saved.state.ai = { ...saved.state.ai, enabled: true, provider: 'anthropic', apiKey: 'sk-ant-test-key', model: 'claude-haiku-5-5' };
+    localStorage.setItem('voice-before-words:settings', JSON.stringify(saved));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Listen for a reply' }).click();
+  await partnerSays(page, 'what do you want to eat');
+  await expect(page.getByRole('button', { name: 'Say: I want cereal.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start: I want … (food)' })).toBeVisible();
+  const sent = JSON.stringify(aiCalls[aiCalls.length - 1]);
+  expect(sent).toContain('Someone just said to the person');
+  expect(sent).toContain('What do you want to eat');
+  expect(sent).toContain('You suggest replies for a person who uses an AAC communication board');
+
+  // Turning it off stops the microphone being used, and agreeing is asked for again next time.
+  await page.goto('/#/settings/listen');
+  await page.getByRole('button', { name: 'Turn off' }).click();
+  await expect(page.getByRole('button', { name: 'Turn on listening' })).toBeDisabled();
+  await page.goto('/#/');
+  await expect(page.getByRole('button', { name: 'Listen for a reply' })).toHaveCount(0);
+  const before = await starts();
+  await page.getByRole('button', { name: 'Say: I need help.' }).click();
+  await page.waitForTimeout(600);
+  expect(await starts()).toBe(before);
+  expect(problems).toEqual([]);
+});
+
 test('settings: every page opens cleanly and fits a phone', async ({ page }) => {
   const problems = watch(page);
   await seed(page);
-  for (const section of ['', 'access', 'voice', 'ai', 'look', 'words', 'data', 'about']) {
+  for (const section of ['', 'access', 'voice', 'ai', 'listen', 'look', 'words', 'data', 'about']) {
     await page.goto(`/#/settings/${section}`);
     await expect(page.locator('.page h1')).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

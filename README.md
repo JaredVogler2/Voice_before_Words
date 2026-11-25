@@ -65,6 +65,14 @@ looks: the group, then the word.*
   an API key for Claude, Gemini, OpenAI, or any OpenAI-compatible server
   (including a model running on your own computer). See
   [Using an AI model](#using-an-ai-model).
+- **Replies to what was just said (optional, off by default).** Type what the
+  other person said, or let the microphone hear it, and the app offers answers
+  before a single symbol is chosen: "Yes, please." and "No, thank you." to an
+  offer, each option to "cereal or toast?", or "I want …" with the food board
+  open to "What do you want to eat?". With an AI key it also suggests likely
+  full answers, using both sides of the recent conversation. The person still
+  chooses; nothing is spoken by itself. See
+  [Listening for replies](#listening-for-replies).
 - **Private by design.** No server of ours exists. See [PRIVACY.md](PRIVACY.md).
 
 ## Try it
@@ -168,9 +176,45 @@ What to know:
   another model by Anthropic's servers (the `fallbacks` option). Claude Haiku
   5.5 has no such retry; if it declines, the on-device suggestions stay.
 
+## Listening for replies
+
+Off until someone turns it on in Settings → Listen for replies, where a page
+says plainly what that means and has to be ticked as read.
+
+How a conversation goes with it on:
+
+1. The person says "I am hungry." with the app.
+2. When the voice finishes, the message bar shows **Listening** for up to ten
+   seconds (adjustable).
+3. The other person says "What do you want to eat?" The bar shows what was
+   heard, so a mistake can be seen.
+4. The sentence row offers replies. Without AI: "I want … (food)", which puts
+   "I want" in the message and opens the food words, plus "I'm not hungry."
+   and "I don't know." With AI: likely answers such as "I want cereal." first.
+5. The person picks one, or ignores them and builds their own answer.
+
+What to know before relying on it:
+
+- **It uses the browser's speech recognition, which sends the sound to the
+  browser's maker** (Google, Apple or Microsoft). That is a real change from
+  the rest of the app, and it involves a second person's voice. It is why this
+  is opt-in. See [PRIVACY.md](PRIVACY.md).
+- **Chrome, Edge and Safari have speech recognition. Firefox does not.** Where
+  it is missing, someone can type what was said instead (Menu → "What was just
+  said to them?") and get the same replies.
+- **A browser may want a tap before it listens.** If it refuses to start by
+  itself, the app says so and the microphone button starts it. This has not
+  been tried on a real iPhone or iPad, including when added to the home screen.
+- **It mishears,** more in a noisy room. Replies are guesses about what a
+  person wants to say; they are shortcuts, never the only way to answer, and a
+  yes-or-no question always gets both answers.
+- The on-device replies come from recognising the kind of question
+  (`src/language/replies.ts`), not from understanding it. Anything unrecognised
+  gets "I don't know." and "Please say that again."
+
 ## Privacy
 
-Everything stays on the device unless an AI model is switched on. The camera
+Everything stays on the device unless an AI model or listening is switched on. The camera
 picture is analysed on the device and never recorded or sent. There is no
 account, no analytics and no advertising. The full statement is in
 [PRIVACY.md](PRIVACY.md).
@@ -201,6 +245,10 @@ Verified, by tests that run in a real browser against the production build:
 - The camera opening and the face tracker loading from the app's own files,
   with no request leaving the device, and the camera being restarted by the
   app when something takes it away.
+- Listening for replies against a stand-in for the microphone: off until the
+  explanation is agreed to, listening after a sentence is spoken, replies to
+  what was heard with and without AI, and the microphone left alone once it is
+  turned off.
 - Working with no connection after one visit: the board, its pictures, its
   sentences, and eye pointing once it has been used (Chromium).
 - Eye pointing end to end, by feeding photographs of real people looking in
@@ -216,6 +264,10 @@ Not yet verified:
   movement, will be harder. Nobody who relies on AAC has tried this yet.
 - **Head pointing and face gestures with a live face.** Their logic is tested
   with simulated measurements; they have not been tried on a person.
+- **A real microphone.** Listening was built against the documented browser
+  interface and tested with a stand-in. It has not been tried with real speech
+  on any device, and whether an iPhone or iPad will listen without a tap each
+  time is unknown.
 - **A real AI provider.** No API key was available during development, so the
   providers were tested against stand-ins that follow their documented formats.
 - **iPhones, iPads and Android devices themselves**, as opposed to their
